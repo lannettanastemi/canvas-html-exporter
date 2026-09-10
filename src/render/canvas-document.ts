@@ -153,8 +153,8 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
 <body>
   <div id="canvas-shell">
   <div class="toolbar">
-    <button type="button" onclick="zoomBy(1 / 1.15)">Zoom −</button>
-    <button type="button" onclick="zoomBy(1.15)">Zoom +</button>
+    <button type="button" onclick="zoomBy(1 / 1.15)" title="Zoom out (Ctrl/Cmd + wheel also zooms)">Zoom −</button>
+    <button type="button" onclick="zoomBy(1.15)" title="Zoom in (Ctrl/Cmd + wheel also zooms)">Zoom +</button>
     <button type="button" onclick="resetZoom()">Reset</button>
     ${hasFoldingControls ? `<details id="folding-menu" class="toolbar-menu"><summary>Folding</summary><div class="toolbar-menu-content">
       <button id="folding-mode-button" type="button" onclick="toggleFoldingMode()" aria-pressed="${String(!foldingInitiallyEnabled)}">${foldingInitiallyEnabled ? "No folding" : "Enable folding"}</button>

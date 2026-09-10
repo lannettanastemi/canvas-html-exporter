@@ -30,6 +30,21 @@ export function buildBrowserViewport({ bounds }: Pick<BrowserRuntimeParameters, 
         minimapViewport.setAttribute("height", String(clamp(visible.height, 0, ${bounds.height})));
       }
 
+      function updateCanvasCenteringBuffer() {
+        // #canvas can be wider/taller than the viewport while the actual node
+        // cluster only occupies a small corner of it. In that case CSS
+        // "margin: auto" collapses to 0 and there is no scroll room left to
+        // truly center that cluster (scrollLeft/scrollTop can't go negative).
+        // Reserve a buffer of blank space on every side so there is always
+        // enough room to scroll the content into the middle of the viewport.
+        const bufferX = viewport.clientWidth;
+        const bufferY = viewport.clientHeight;
+        canvas.style.marginLeft = bufferX + "px";
+        canvas.style.marginRight = bufferX + "px";
+        canvas.style.marginTop = bufferY + "px";
+        canvas.style.marginBottom = bufferY + "px";
+      }
+
       function scrollViewportToCanvasPoint(x, y, behavior) {
         const canvasRect = canvas.getBoundingClientRect();
         const viewportRect = viewport.getBoundingClientRect();

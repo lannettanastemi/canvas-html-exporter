@@ -56,9 +56,14 @@ export function buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, 
       padding: 16px 24px 28px;
       flex: 1 1 auto;
       min-height: 0;
+      cursor: grab;
     }
     .viewport.is-zoom-area-selecting {
       cursor: crosshair;
+      user-select: none;
+    }
+    .viewport.is-panning {
+      cursor: grabbing;
       user-select: none;
     }
     .zoom-area-selection {
@@ -94,7 +99,7 @@ export function buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, 
       position: relative;
       width: ${bounds.width}px;
       height: ${bounds.height}px;
-      margin: 0 auto;
+      margin: 0;
       transform-origin: top left;
     }
     #edge-layer {

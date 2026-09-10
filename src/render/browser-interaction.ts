@@ -34,6 +34,61 @@ export function buildBrowserInteraction(): string {
         }, 100);
       }
 
+      function cancelPanDrag(suppressClick = false) {
+        if (
+          panDrag
+          && typeof viewport.hasPointerCapture === "function"
+          && viewport.hasPointerCapture(panDrag.pointerId)
+        ) {
+          viewport.releasePointerCapture(panDrag.pointerId);
+        }
+        if (suppressClick && panDrag && panDrag.active) suppressZoomAreaClick();
+        panDrag = null;
+        viewport.classList.remove("is-panning");
+      }
+
+      function startPanDrag(event) {
+        if (event.pointerType !== "mouse" || event.button !== 0) return;
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.closest("a, button, input, select, textarea, iframe, audio, video, [contenteditable='true']")) return;
+        panDrag = {
+          pointerId: event.pointerId,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startScrollLeft: viewport.scrollLeft,
+          startScrollTop: viewport.scrollTop,
+          active: false,
+        };
+      }
+
+      function movePanDrag(event) {
+        if (!panDrag || event.pointerId !== panDrag.pointerId) return;
+        if ((event.buttons & 1) === 0) {
+          cancelPanDrag();
+          return;
+        }
+        const deltaX = event.clientX - panDrag.startClientX;
+        const deltaY = event.clientY - panDrag.startClientY;
+        if (!panDrag.active && Math.hypot(deltaX, deltaY) < 6) return;
+        if (!panDrag.active) {
+          panDrag.active = true;
+          viewport.classList.add("is-panning");
+          if (typeof viewport.setPointerCapture === "function") {
+            viewport.setPointerCapture(event.pointerId);
+          }
+        }
+        viewport.scrollLeft = panDrag.startScrollLeft - deltaX;
+        viewport.scrollTop = panDrag.startScrollTop - deltaY;
+        event.preventDefault();
+      }
+
+      function finishPanDrag(event) {
+        if (!panDrag || event.pointerId !== panDrag.pointerId) return;
+        const wasActive = panDrag.active;
+        cancelPanDrag(wasActive);
+        if (wasActive) event.preventDefault();
+      }
+
       function cancelZoomAreaDrag(suppressClick = false) {
         if (
           zoomAreaDrag
@@ -72,7 +127,7 @@ export function buildBrowserInteraction(): string {
       }
 
       function startZoomAreaSelection(event) {
-        if (event.pointerType !== "mouse" || event.button !== 0) return;
+        if (event.pointerType !== "mouse" || event.button !== 2) return;
         const target = event.target instanceof Element ? event.target : null;
         if (target?.closest("a, button, input, select, textarea, iframe, audio, video, [contenteditable='true']")) return;
         const point = getZoomAreaPoint(event);
@@ -93,7 +148,7 @@ export function buildBrowserInteraction(): string {
 
       function moveZoomAreaSelection(event) {
         if (!zoomAreaDrag || event.pointerId !== zoomAreaDrag.pointerId) return;
-        if ((event.buttons & 1) === 0) {
+        if ((event.buttons & 2) === 0) {
           cancelZoomAreaDrag();
           return;
         }
@@ -167,6 +222,27 @@ export function buildBrowserInteraction(): string {
         drawEdges();
         updateMinimapViewport();
       };
+
+      function zoomAtPoint(clientX, clientY, factor) {
+        const canvasRect = canvas.getBoundingClientRect();
+        const mouseXInCanvasVisual = clientX - canvasRect.left;
+        const mouseYInCanvasVisual = clientY - canvasRect.top;
+        const previousScale = currentScale;
+        const newScale = clamp(previousScale * factor, 0.2, 4);
+        if (newScale === previousScale) return;
+        const ratio = newScale / previousScale;
+
+        cancelZoomAreaDrag();
+        currentScale = newScale;
+        setCssProps(canvas, { transform: "scale(" + currentScale + ")" });
+
+        viewport.scrollLeft += mouseXInCanvasVisual * (ratio - 1);
+        viewport.scrollTop += mouseYInCanvasVisual * (ratio - 1);
+
+        drawEdges();
+        updateMinimapViewport();
+      }
+      window.zoomAtPoint = zoomAtPoint;
 
       window.resetZoom = function() {
         cancelZoomAreaDrag();

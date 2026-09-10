@@ -78,6 +78,7 @@ export function buildBrowserRuntime({ exportFormat, options, theme, edgePaletteC
       let visibleLevelLimit = null;
       let currentScale = 1;
       let zoomAreaDrag = null;
+      let panDrag = null;
       let cancelledZoomAreaPointerId = null;
       let suppressNextZoomAreaClick = false;
       let minimapDrag = null;
@@ -88,8 +89,10 @@ export function buildBrowserRuntime({ exportFormat, options, theme, edgePaletteC
 
 ${buildBrowserEdges()}${buildBrowserViewport({ bounds })}${buildBrowserSearch()}${buildBrowserPages()}${buildBrowserFolding({ hasImportedFolding })}${buildBrowserInteraction()}      applyImportedFolding(${serializeScriptData(hasImportedFolding)});
       syncLinkOfflineState();
+      updateCanvasCenteringBuffer();
       window.resetZoom();
       window.addEventListener("resize", () => {
+        updateCanvasCenteringBuffer();
         drawEdges();
         window.resetZoom();
         if (minimapPanel) {
@@ -103,8 +106,31 @@ ${buildBrowserEdges()}${buildBrowserViewport({ bounds })}${buildBrowserSearch()}
       });
       viewport.addEventListener("scroll", updateMinimapViewport, { passive: true });
       viewport.addEventListener("pointerdown", startZoomAreaSelection, true);
+      viewport.addEventListener("pointerdown", startPanDrag, true);
+      viewport.addEventListener("contextmenu", (event) => {
+        // The right mouse button now drives drag-to-zoom-area instead of the
+        // OS context menu.
+        event.preventDefault();
+      });
+      viewport.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        // A plain vertical mouse wheel reports its motion as deltaY. Once a
+        // modifier is held, some OS/browser combos (notably Shift on
+        // Windows/Chrome) remap that same physical motion onto deltaX
+        // instead. Picking whichever axis actually carries the motion keeps
+        // this working the same way across mice, trackpads and modifiers.
+        const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+        if (event.ctrlKey || event.metaKey) {
+          const factor = delta < 0 ? 1.12 : 1 / 1.12;
+          zoomAtPoint(event.clientX, event.clientY, factor);
+        } else if (event.shiftKey) {
+          viewport.scrollLeft += delta;
+        } else {
+          viewport.scrollTop += delta;
+        }
+      }, { passive: false });
       viewport.addEventListener("dragstart", (event) => {
-        if (zoomAreaDrag) event.preventDefault();
+        if (zoomAreaDrag || (panDrag && panDrag.active)) event.preventDefault();
       });
       viewport.addEventListener("click", (event) => {
         if (!suppressNextZoomAreaClick) return;
@@ -113,10 +139,13 @@ ${buildBrowserEdges()}${buildBrowserViewport({ bounds })}${buildBrowserSearch()}
         event.stopPropagation();
       }, true);
       window.addEventListener("pointermove", moveZoomAreaSelection, { passive: false });
+      window.addEventListener("pointermove", movePanDrag, { passive: false });
       window.addEventListener("pointerup", finishZoomAreaSelection);
+      window.addEventListener("pointerup", finishPanDrag);
       window.addEventListener("pointercancel", () => {
         cancelledZoomAreaPointerId = null;
         cancelZoomAreaDrag();
+        cancelPanDrag();
       });
       if (minimapDragHandle) {
         minimapDragHandle.addEventListener("pointerdown", startMinimapDrag);
@@ -247,6 +276,11 @@ ${buildBrowserEdges()}${buildBrowserViewport({ bounds })}${buildBrowserSearch()}
           event.preventDefault();
           cancelledZoomAreaPointerId = zoomAreaDrag.pointerId;
           cancelZoomAreaDrag();
+          return;
+        }
+        if (event.key === "Escape" && panDrag) {
+          event.preventDefault();
+          cancelPanDrag();
           return;
         }
         if (event.key === "Escape" && searchOverlay && !searchOverlay.hidden) {
