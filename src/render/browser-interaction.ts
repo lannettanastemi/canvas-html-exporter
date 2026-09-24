@@ -246,12 +246,14 @@ export function buildBrowserInteraction(): string {
 
       window.resetZoom = function() {
         cancelZoomAreaDrag();
-        const fitPadding = 48;
+        const fitPadding = 32;
         const fitBounds = getFitNodeBounds();
-        const availableWidth = Math.max(100, viewport.clientWidth);
-        const availableHeight = Math.max(100, viewport.clientHeight);
-        const scaleX = availableWidth / (fitBounds.width + fitPadding * 2);
-        const scaleY = availableHeight / (fitBounds.height + fitPadding * 2);
+        const viewportTop = viewport.getBoundingClientRect().top;
+        const topInset = toolbar ? Math.max(0, toolbar.getBoundingClientRect().bottom - viewportTop) : 0;
+        const availableWidth = Math.max(100, viewport.clientWidth - fitPadding * 2);
+        const availableHeight = Math.max(100, viewport.clientHeight - topInset - fitPadding * 2);
+        const scaleX = availableWidth / Math.max(1, fitBounds.width);
+        const scaleY = availableHeight / Math.max(1, fitBounds.height);
         currentScale = Math.min(scaleX, scaleY, 1);
         setCssProps(canvas, { transform: "scale(" + currentScale + ")" });
         drawEdges();
@@ -260,6 +262,7 @@ export function buildBrowserInteraction(): string {
           fitBounds.top + fitBounds.height / 2,
           "auto",
         );
+        if (topInset > 0) viewport.scrollTop = Math.max(0, viewport.scrollTop - topInset / 2);
       };
 
       function syncLinkOfflineState() {

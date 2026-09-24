@@ -7,6 +7,7 @@ import { buildExporterBuildMeta, EXPORTER_SIGNATURE } from "./metadata";
 import { buildSearchEntry, renderGroupTitle, renderMinimapNode, renderNode } from "./nodes";
 import { buildCalloutCss, buildCanvasColorVariables, buildCanvasEdgeColorMap, buildHeadingColorCss, buildInlineStyleCss, getTheme } from "./theme";
 import type { CanvasData, ExportOptions } from "./types";
+import { buildViewerChromeStyles, viewerIcon } from "./viewer-chrome";
 
 export async function convertCanvasToHtml(data: CanvasData, options: ExportOptions): Promise<string> {
   const nodes = Array.isArray(data.nodes) ? data.nodes : [];
@@ -98,6 +99,23 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
     .map((node) => buildSearchEntry(node, bounds.offsetX, bounds.offsetY))
     .filter((entry) => entry.text);
 
+  const foldingMenuHtml = hasFoldingControls ? `<details id="folding-menu" class="toolbar-menu"><summary class="toolbar-icon" title="Folding" aria-label="Folding">${viewerIcon("folding", 18)}</summary><div class="toolbar-menu-content">
+      <button id="folding-mode-button" type="button" onclick="toggleFoldingMode()" aria-pressed="${String(!foldingInitiallyEnabled)}">${foldingInitiallyEnabled ? "No folding" : "Enable folding"}</button>
+      <button id="folding-controls-visibility-button" class="folding-action-control" type="button" onclick="toggleFoldingControlsVisibility()" aria-pressed="${String(foldingInitiallyEnabled)}"${foldingInitiallyEnabled ? "" : " hidden"}>Hide folding controls</button>
+      <button id="folding-expand-all-button" class="folding-action-control" type="button" onclick="expandAllBranches()"${foldingInitiallyEnabled ? "" : " hidden"}>Expand all</button>
+      ${hasRootedBranches ? `<button id="folding-collapse-all-button" class="folding-action-control" type="button" onclick="collapseAllBranches()"${foldingInitiallyEnabled ? "" : " hidden"}>Collapse all</button>` : ""}
+      ${hasLevelView ? `<select id="folding-level-select" class="folding-action-control" aria-label="Visible canvas levels" title="Visible canvas levels" onchange="setVisibleLevel(this.value)"${foldingInitiallyEnabled ? "" : " hidden"}><option value="all">All levels</option>${foldingLevelOptions}</select>` : ""}
+      <button id="folding-toolbar-button" type="button" onclick="restoreImportedFolding()">Restore folding</button>
+      <hr class="folding-menu-separator folding-action-control"${foldingInitiallyEnabled ? "" : " hidden"}>
+      <button id="focus-controls-visibility-button" class="folding-action-control" type="button" onclick="toggleFocusControlsVisibility()" aria-pressed="${String(foldingInitiallyEnabled)}"${foldingInitiallyEnabled ? "" : " hidden"}>Hide focus controls</button>
+      <button id="folding-focus-exit-button" class="folding-action-control" type="button" onclick="exitBranchFocus()" disabled${foldingInitiallyEnabled ? "" : " hidden"}>Exit focus</button>
+    </div></details>` : "";
+  const toolbarActionsHtml = [
+    foldingMenuHtml,
+    showMinimap ? `<button id="minimap-toolbar-button" type="button" onclick="toggleMinimap()" title="Minimap" aria-label="Minimap">${viewerIcon("minimap", 18)}</button>` : "",
+    showSearch ? `<button id="search-toolbar-button" type="button" onclick="openSearch()" title="Search (/)" aria-label="Search">${viewerIcon("search", 18)}</button>` : "",
+  ].filter(Boolean).join("\n    ");
+
   const canvasColorVars = buildCanvasColorVariables(options.canvasColors);
   const minimapHtml = showMinimap
     ? `<aside id="minimap-panel" class="minimap" aria-label="Canvas minimap" hidden>
@@ -148,32 +166,19 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
   <base href="./">
   <title>${escapeHtml(options.title)}</title>
   <!-- Exported by ${EXPORTER_SIGNATURE} -->
-  <style>${buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, contentInlineStyleCss, calloutCss, singlePageHeadingCss, singlePageInlineStyleCss, previewInlineStyleCss, previewHeadingCss })}  </style>
+  <style>${buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, contentInlineStyleCss, calloutCss, singlePageHeadingCss, singlePageInlineStyleCss, previewInlineStyleCss, previewHeadingCss })}${buildViewerChromeStyles(theme)}  </style>
 </head>
 <body>
   <div id="canvas-shell">
   <div class="toolbar">
+    <div class="toolbar-lead">
     <nav id="site-nav" class="toolbar-nav"></nav>
-    <button type="button" onclick="zoomBy(1 / 1.15)" title="Zoom out (Ctrl/Cmd + wheel also zooms)">Zoom −</button>
-    <button type="button" onclick="zoomBy(1.15)" title="Zoom in (Ctrl/Cmd + wheel also zooms)">Zoom +</button>
-    <button type="button" onclick="resetZoom()">Reset</button>
-    ${hasFoldingControls ? `<details id="folding-menu" class="toolbar-menu"><summary>Folding</summary><div class="toolbar-menu-content">
-      <button id="folding-mode-button" type="button" onclick="toggleFoldingMode()" aria-pressed="${String(!foldingInitiallyEnabled)}">${foldingInitiallyEnabled ? "No folding" : "Enable folding"}</button>
-      <button id="folding-controls-visibility-button" class="folding-action-control" type="button" onclick="toggleFoldingControlsVisibility()" aria-pressed="${String(foldingInitiallyEnabled)}"${foldingInitiallyEnabled ? "" : " hidden"}>Hide folding controls</button>
-      <button id="folding-expand-all-button" class="folding-action-control" type="button" onclick="expandAllBranches()"${foldingInitiallyEnabled ? "" : " hidden"}>Expand all</button>
-      ${hasRootedBranches ? `<button id="folding-collapse-all-button" class="folding-action-control" type="button" onclick="collapseAllBranches()"${foldingInitiallyEnabled ? "" : " hidden"}>Collapse all</button>` : ""}
-      ${hasLevelView ? `<select id="folding-level-select" class="folding-action-control" aria-label="Visible canvas levels" title="Visible canvas levels" onchange="setVisibleLevel(this.value)"${foldingInitiallyEnabled ? "" : " hidden"}><option value="all">All levels</option>${foldingLevelOptions}</select>` : ""}
-      <button id="folding-toolbar-button" type="button" onclick="restoreImportedFolding()">Restore folding</button>
-      <hr class="folding-menu-separator folding-action-control"${foldingInitiallyEnabled ? "" : " hidden"}>
-      <button id="focus-controls-visibility-button" class="folding-action-control" type="button" onclick="toggleFocusControlsVisibility()" aria-pressed="${String(foldingInitiallyEnabled)}"${foldingInitiallyEnabled ? "" : " hidden"}>Hide focus controls</button>
-      <button id="folding-focus-exit-button" class="folding-action-control" type="button" onclick="exitBranchFocus()" disabled${foldingInitiallyEnabled ? "" : " hidden"}>Exit focus</button>
-    </div></details>` : ""}
-    ${showMinimap ? `<button id="minimap-toolbar-button" type="button" onclick="toggleMinimap()">Minimap</button>` : ""}
-    ${showSearch ? `<button id="search-toolbar-button" type="button" onclick="openSearch()">Search...</button>` : ""}
-  </div>
-  <div class="page-header">
-    <h1>${escapeHtml(options.title)}</h1>
-    <p>${canvasCountSummary}<span id="hidden-node-summary" hidden></span></p>
+    <div class="toolbar-title cx-glass">
+      <h1>${escapeHtml(options.title)}</h1>
+      <p>${canvasCountSummary}<span id="hidden-node-summary" hidden></span></p>
+    </div>
+    </div>
+    ${toolbarActionsHtml ? `<div class="toolbar-actions cx-glass">${toolbarActionsHtml}</div>` : ""}
   </div>
   <div class="viewport">
     <div id="zoom-area-selection" class="zoom-area-selection" hidden></div>
@@ -183,6 +188,13 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
       ${nodeHtml}
       ${groupTitleHtml}
     </div>
+  </div>
+  <div class="zoom-pill cx-glass" role="group" aria-label="Zoom">
+    <button type="button" onclick="zoomBy(1 / 1.15)" title="Zoom out (Ctrl −)" aria-label="Zoom out">${viewerIcon("minus", 16, 2.2)}</button>
+    <button id="zoom-level" class="zoom-pill-level" type="button" onclick="resetZoom()" title="Fit to screen (Ctrl 0)">100%</button>
+    <button type="button" onclick="zoomBy(1.15)" title="Zoom in (Ctrl +)" aria-label="Zoom in">${viewerIcon("plus", 16, 2.2)}</button>
+    <span class="zoom-pill-divider" aria-hidden="true"></span>
+    <button type="button" onclick="resetZoom()" title="Fit to screen (Ctrl 0)" aria-label="Fit to screen">${viewerIcon("fit", 16)}</button>
   </div>
   ${minimapHtml}
   ${searchHtml}

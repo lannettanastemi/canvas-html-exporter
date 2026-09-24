@@ -7,6 +7,7 @@ import { buildBrowserSearch } from "./browser-search";
 import { buildBrowserViewport } from "./browser-viewport";
 import { serializeScriptData } from "./html";
 import { normalizeCssColorValue } from "./theme";
+import { buildViewerChromeRuntime } from "./viewer-chrome";
 
 
 
@@ -322,7 +323,7 @@ ${buildBrowserEdges()}${buildBrowserViewport({ bounds })}${buildBrowserSearch()}
       });
       window.addEventListener("online", syncLinkOfflineState);
       window.addEventListener("offline", syncLinkOfflineState);
-
+${buildViewerChromeRuntime()}
       materializeInlineAssets(document);
 
     })();

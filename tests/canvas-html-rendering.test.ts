@@ -1033,7 +1033,7 @@ await test("applies an imported Canvas Folding state in both export modes", asyn
       },
     });
 
-    assert.match(html, /id="folding-menu" class="toolbar-menu"><summary>Folding<\/summary><div class="toolbar-menu-content">/);
+    assert.match(html, /id="folding-menu" class="toolbar-menu"><summary class="toolbar-icon" title="Folding" aria-label="Folding"><svg[^>]*><path d="[^"]*"\/><\/svg><\/summary><div class="toolbar-menu-content">/);
     assert.match(html, /\.toolbar-menu > summary \{[\s\S]*font: inherit;\s+font-size: 0\.875rem;/);
     assert.match(html, /id="folding-expand-all-button"[^>]+onclick="expandAllBranches\(\)"[^>]*>Expand all<\/button>/);
     assert.match(html, /id="folding-mode-button"[^>]+onclick="toggleFoldingMode\(\)"[^>]*>No folding<\/button>/);
@@ -1193,7 +1193,7 @@ await test("renders cycle-safe branch controls in both export modes", async () =
     assert.match(html, /function toggleBranch\(nodeId\)/);
     assert.match(html, /id="folding-expand-all-button"[^>]*>Expand all<\/button>/);
     assert.match(html, /id="folding-collapse-all-button"[^>]*>Collapse all<\/button>/);
-    assert.match(html, /id="folding-menu" class="toolbar-menu"><summary>Folding<\/summary><div class="toolbar-menu-content">/);
+    assert.match(html, /id="folding-menu" class="toolbar-menu"><summary class="toolbar-icon" title="Folding" aria-label="Folding"><svg[^>]*><path d="[^"]*"\/><\/svg><\/summary><div class="toolbar-menu-content">/);
     assert.match(html, /id="folding-focus-exit-button"[^>]+onclick="exitBranchFocus\(\)" disabled>Exit focus<\/button>/);
     assert.match(html, /id="folding-controls-visibility-button"[^>]+onclick="toggleFoldingControlsVisibility\(\)"[^>]*>Hide folding controls<\/button>/);
     assert.match(html, /<button id="folding-toolbar-button"[^>]*>Restore folding<\/button>\s+<hr class="folding-menu-separator folding-action-control">\s+<button id="focus-controls-visibility-button"[^>]*>Hide focus controls<\/button>\s+<button id="folding-focus-exit-button"[^>]*>Exit focus<\/button>/);
