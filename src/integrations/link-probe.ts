@@ -14,6 +14,17 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/avif": "avif",
 };
 
+const KNOWN_UNFRAMEABLE_HOSTS = ["playerok.com"];
+
+function isKnownUnframeable(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return KNOWN_UNFRAMEABLE_HOSTS.some((known) => host === known || host.endsWith(`.${known}`));
+  } catch {
+    return false;
+  }
+}
+
 function withTimeout<T>(promise: Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = window.setTimeout(() => reject(new Error("Link probe timed out")), PROBE_TIMEOUT_MS);
@@ -59,9 +70,12 @@ export function createLinkProber(): LinkProber {
     if (!/^https?:\/\//i.test(url)) return null;
     try {
       const response = await fetchUrl(url);
-      if (!isFramingBlocked(response.headers)) return { blocked: false };
+      const reachable = response.status >= 200 && response.status < 300;
+      const blocked = isKnownUnframeable(url) || !reachable || isFramingBlocked(response.headers);
+      console.debug(`[canvas-html-exporter] link probe ${response.status} ${blocked ? "card" : "iframe"}: ${url}`);
+      if (!blocked) return { blocked: false };
       const contentType = headerValue(response.headers, "content-type").toLowerCase();
-      if (!contentType.includes("html")) return { blocked: true };
+      if (!reachable || !contentType.includes("html")) return { blocked: true };
       const meta = extractLinkPreviewMeta(response.text, url);
       return {
         blocked: true,
@@ -69,8 +83,9 @@ export function createLinkProber(): LinkProber {
         description: meta.description,
         image: meta.image ? await downloadImage(meta.image) : undefined,
       };
-    } catch {
-      return null;
+    } catch (error) {
+      console.debug(`[canvas-html-exporter] link probe failed, using card: ${url}`, error);
+      return { blocked: true };
     }
   };
 

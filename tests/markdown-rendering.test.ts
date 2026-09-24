@@ -60,6 +60,15 @@ await test("auto-links bare urls", async () => {
   assert.match(html, /<a href="https:\/\/example\.com\/docs" target="_blank" rel="noopener noreferrer">https:\/\/example\.com\/docs<\/a>\./);
 });
 
+await test("auto-links urls wrapped in emphasis", async () => {
+  const bold = await markdownToHtml("**https://t.me/plotgifts/2379**");
+  assert.match(bold, /<strong><a href="https:\/\/t\.me\/plotgifts\/2379" target="_blank" rel="noopener noreferrer">https:\/\/t\.me\/plotgifts\/2379<\/a><\/strong>/);
+  const trailing = await markdownToHtml("**Чат: https://example.com/chats/1eef**");
+  assert.match(trailing, /<strong>Чат: <a href="https:\/\/example\.com\/chats\/1eef"[^>]*>https:\/\/example\.com\/chats\/1eef<\/a><\/strong>/);
+  const italic = await markdownToHtml("_https://example.com/a_");
+  assert.match(italic, /<a href="https:\/\/example\.com\/a"/);
+});
+
 await test("adds normalized ids to headings", async () => {
   const html = await markdownToHtml("## Über Café");
   assert.match(html, /<details class="heading-section heading-section-h2" open>/);

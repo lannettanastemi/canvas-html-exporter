@@ -153,6 +153,7 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
 <body>
   <div id="canvas-shell">
   <div class="toolbar">
+    <nav id="site-nav" class="toolbar-nav"></nav>
     <button type="button" onclick="zoomBy(1 / 1.15)" title="Zoom out (Ctrl/Cmd + wheel also zooms)">Zoom −</button>
     <button type="button" onclick="zoomBy(1.15)" title="Zoom in (Ctrl/Cmd + wheel also zooms)">Zoom +</button>
     <button type="button" onclick="resetZoom()">Reset</button>

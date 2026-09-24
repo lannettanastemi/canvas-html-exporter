@@ -687,6 +687,33 @@ export function buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, 
       border: none;
       background: ${theme.canvasBackground};
     }
+    .link-preview-frame,
+    .pdf-embed {
+      position: relative;
+    }
+    .link-preview-frame:not(.is-active) iframe,
+    .pdf-embed:not(.is-active) iframe {
+      pointer-events: none;
+    }
+    .link-preview-frame:not(.is-active)::after {
+      content: "Click to interact";
+      position: absolute;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.62);
+      color: #fff;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .link-preview-frame:not(.is-active):hover::after {
+      opacity: 1;
+    }
     .link-card {
       display: flex;
       flex-direction: column;
@@ -778,6 +805,30 @@ export function buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, 
       justify-content: flex-end;
       padding: 10px 24px 0;
       background: linear-gradient(to bottom, ${theme.bodyBackground}, transparent);
+    }
+    .toolbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: auto;
+    }
+    .toolbar-nav:empty {
+      display: none;
+    }
+    .toolbar-nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid ${theme.canvasBorder};
+      background: ${theme.nodeBackground};
+      color: ${theme.text};
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.875rem;
+      text-decoration: none;
+    }
+    .toolbar-nav a:hover {
+      background: ${theme.chipBackground};
     }
     .toolbar button,
     .toolbar select,

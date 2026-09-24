@@ -439,7 +439,7 @@ function renderInline(text: string): string {
 
   let html = escapeHtml(withMathPlaceholders);
   html = html.replace(
-    /(^|[\s(>])((?:https?:\/\/|mailto:|file:)[^\s<]*[^\s<.,:;"')\]}])/g,
+    /(^|[\s(>*_~])((?:https?:\/\/|mailto:|file:)[^\s<]*[^\s<.,:;"')\]}*_~])/g,
     '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>',
   );
   html = html.replace(/\x5b\x5b([^\x5d|]+)\|([^\x5d]+)\x5d\x5d/g, "[[$1|$2]]");

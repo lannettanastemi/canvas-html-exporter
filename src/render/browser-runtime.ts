@@ -129,6 +129,22 @@ ${buildBrowserEdges()}${buildBrowserViewport({ bounds })}${buildBrowserSearch()}
           viewport.scrollTop += delta;
         }
       }, { passive: false });
+      document.addEventListener("wheel", (event) => {
+        if (!(event.ctrlKey || event.metaKey)) return;
+        if (event.target instanceof Node && viewport.contains(event.target)) return;
+        event.preventDefault();
+        const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+        const viewportRect = viewport.getBoundingClientRect();
+        zoomAtPoint(
+          viewportRect.left + viewportRect.width / 2,
+          viewportRect.top + viewportRect.height / 2,
+          delta < 0 ? 1.12 : 1 / 1.12,
+        );
+      }, { passive: false });
+      document.querySelectorAll(".link-preview-frame, .pdf-embed").forEach((frame) => {
+        frame.addEventListener("click", () => frame.classList.add("is-active"));
+        frame.addEventListener("pointerleave", () => frame.classList.remove("is-active"));
+      });
       viewport.addEventListener("dragstart", (event) => {
         if (zoomAreaDrag || (panDrag && panDrag.active)) event.preventDefault();
       });
@@ -264,6 +280,23 @@ ${buildBrowserEdges()}${buildBrowserViewport({ bounds })}${buildBrowserSearch()}
       }
       window.addEventListener("keydown", (event) => {
         if (trapSearchFocus(event)) return;
+        if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+          if (event.key === "=" || event.key === "+") {
+            event.preventDefault();
+            window.zoomBy(1.15);
+            return;
+          }
+          if (event.key === "-" || event.key === "_") {
+            event.preventDefault();
+            window.zoomBy(1 / 1.15);
+            return;
+          }
+          if (event.key === "0") {
+            event.preventDefault();
+            window.resetZoom();
+            return;
+          }
+        }
         const target = event.target instanceof HTMLElement ? event.target : null;
         const targetTag = target?.tagName || "";
         const isTypingContext = targetTag === "INPUT" || targetTag === "TEXTAREA" || Boolean(target?.isContentEditable);
