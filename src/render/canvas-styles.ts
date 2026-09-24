@@ -101,6 +101,10 @@ export function buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, 
       height: ${bounds.height}px;
       margin: 0;
       transform-origin: top left;
+      background-color: ${theme.canvasBackground};
+      background-image: radial-gradient(${theme.darkMode ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)"} 1px, transparent 1px);
+      background-size: 20px 20px;
+      background-position: 0 0;
     }
     #edge-layer {
       position: absolute;
@@ -682,6 +686,85 @@ export function buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, 
       min-height: 100%;
       border: none;
       background: ${theme.canvasBackground};
+    }
+    .link-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 100%;
+      min-height: 0;
+    }
+    .link-card-image {
+      display: block;
+      flex: 1 1 auto;
+      min-height: 0;
+      border: 1px solid ${theme.canvasBorder};
+      border-radius: 10px;
+      overflow: hidden;
+      background: ${theme.canvasBackground};
+    }
+    .node-content .link-card-image img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      margin: 0;
+      border-radius: 0;
+      object-fit: cover;
+      object-position: top;
+    }
+    .link-card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .link-card:not(.has-image) .link-card-body {
+      flex: 1 1 auto;
+      justify-content: center;
+      padding: 14px 16px;
+      border: 1px solid ${theme.canvasBorder};
+      border-radius: 10px;
+      background: ${theme.canvasBackground};
+    }
+    .link-card-host {
+      color: ${theme.mutedText};
+      font-size: 0.8em;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .link-card-title {
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .link-card-description {
+      color: ${theme.mutedText};
+      font-size: 0.88em;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .link-card-path {
+      color: ${theme.mutedText};
+      font-size: 0.86em;
+      word-break: break-all;
+    }
+    .node-content .link-card-open {
+      align-self: flex-start;
+      margin-top: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid ${theme.canvasBorder};
+      color: ${theme.link};
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .node-content .link-card-open:hover {
+      text-decoration: none;
+      border-color: ${theme.link};
     }
     .toolbar {
       position: sticky;

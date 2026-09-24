@@ -10,6 +10,7 @@ import { CURRENT_RELEASE_NOTES_ID } from "./release-notes-content";
 import { openCurrentReleaseNotes } from "./ui/release-notes";
 import { openPluginReadme } from "./ui/readme";
 import { collectCanvasColorKeys } from "./export/canvas-data";
+import { createLinkProber } from "./integrations/link-probe";
 
 type CanvasColorMap = Record<string, string>;
 type CalloutColorMap = Record<string, string>;
@@ -100,6 +101,7 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
         inlineStyleColors,
         foldingInitiallyEnabled: settings.foldingInitialState !== "none",
         initialFoldState: initialFoldState ?? undefined,
+        probeLink: createLinkProber(),
       });
       result.options.canvasColors = this.readCanvasPaletteColors(collectCanvasColorKeys(result.data));
       const html = await convertCanvasToHtml(result.data, result.options);
@@ -279,7 +281,6 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
     styleScope.appendChild(host);
 
     try {
-      const textColor = this.readProbeTextColor(host) || this.normalizeThemeColor(getComputedStyle(styleScope).color) || this.resolveCssVariable("--text-normal");
       const sampledColors: HeadingColorMap = {};
 
       for (const level of ["h1", "h2", "h3", "h4", "h5", "h6"]) {
@@ -293,15 +294,7 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
         heading.remove();
       }
 
-      const sampledValues = Object.values(sampledColors);
-      if (!sampledValues.length) {
-        return fallbackColors;
-      }
-
-      const hasDistinctHeadingColor = sampledValues.some((color) => !this.sameCssColor(color, textColor));
-      return hasDistinctHeadingColor
-        ? { ...fallbackColors, ...sampledColors }
-        : fallbackColors;
+      return { ...fallbackColors, ...sampledColors };
     } finally {
       host.remove();
     }
@@ -397,15 +390,6 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
 
   private applyHiddenProbeStyles(element: HTMLElement): void {
     element.addClass("canvas-html-exporter-hidden-probe");
-  }
-
-  private readProbeTextColor(host: HTMLElement): string {
-    const paragraph = createEl("p");
-    paragraph.textContent = "Probe";
-    host.appendChild(paragraph);
-    const resolved = this.normalizeThemeColor(getComputedStyle(paragraph).color);
-    paragraph.remove();
-    return resolved;
   }
 
   private buildHeadingFallbackColors(canvasColors: CanvasColorMap): HeadingColorMap {

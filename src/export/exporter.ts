@@ -15,7 +15,7 @@ import {
 import { isAbsoluteFilesystemPath, requireDesktopNodeApis } from "../helpers/desktop-paths";
 import { buildUniqueOutputName, normalizeFolder, safeSegment, toExportRelativePath } from "./files";
 import { normalizeCanvasData, shouldRewriteInternalTarget } from "./canvas-data";
-import { safeNavigationUrl, safeWebPreviewUrl, embedSizeAttributes, normalizeWikiTarget, parseWikiReference, splitTargetSuffix } from "../helpers/link-helpers";
+import { safeNavigationUrl, safeWebPreviewUrl, embedSizeAttributes, normalizeWikiTarget, parseWikiReference, splitTargetSuffix, telegramEmbedUrl } from "../helpers/link-helpers";
 import { getHrefForMarkdownPage } from "../helpers/path-helpers";
 import { buildPreviewText } from "../helpers/preview-helpers";
 import type { ExportFormatChoice } from "../settings";
@@ -35,7 +35,17 @@ export type ExportSettings = {
   showSearch?: boolean;
   foldingInitiallyEnabled?: boolean;
   initialFoldState?: CanvasFoldState;
+  probeLink?: LinkProber;
 };
+
+export type LinkProbeResult = {
+  blocked: boolean;
+  title?: string;
+  description?: string;
+  image?: { data: ArrayBuffer; extension: string };
+};
+
+export type LinkProber = (url: string) => Promise<LinkProbeResult | null>;
 
 export type ExportResult = {
   outputPath: string;
@@ -67,6 +77,7 @@ type MarkdownContext = {
   inlineStyleColors?: Record<string, string>;
   singleHtmlPages: EmbeddedPage[];
   pageIdCounter: number;
+  probeLink?: LinkProber;
 };
 
 type LinkBase = "canvas" | "page";
@@ -225,6 +236,7 @@ export async function exportCanvasPackage(
     inlineStyleColors: settings.inlineStyleColors,
     singleHtmlPages: [],
     pageIdCounter: 0,
+    probeLink: settings.probeLink,
   };
 
   const preparedNodes: CanvasNode[] = [];
@@ -269,6 +281,25 @@ async function prepareNode(ctx: MarkdownContext, node: CanvasNode): Promise<Canv
   if (nodeType === "link") {
     const url = typeof node.url === "string" ? node.url.trim() : "";
     if (!url) return { ...node };
+
+    const telegramUrl = telegramEmbedUrl(url, ctx.darkMode);
+    if (telegramUrl) {
+      return { ...node, displayName: url, canvasHref: url, embedUrl: telegramUrl };
+    }
+
+    const probe = ctx.probeLink ? await ctx.probeLink(url).catch(() => null) : null;
+    if (probe?.blocked) {
+      return {
+        ...node,
+        displayName: url,
+        canvasHref: url,
+        linkCard: {
+          title: probe.title,
+          description: probe.description,
+          image: probe.image ? await writeLinkPreviewImage(ctx, probe.image) : undefined,
+        },
+      };
+    }
 
     const exportHtmlPath = await exportLinkNodePage(ctx, node);
     const canvasHref = ctx.exportFormat === "single-html"
@@ -973,6 +1004,16 @@ async function copyVaultFile(ctx: MarkdownContext, file: TFile, kind: "image" | 
   const rel = toExportRelativePath(outputPath, ctx.outputRoot);
   ctx.fileMap.set(file.path, rel);
   return rel;
+}
+
+async function writeLinkPreviewImage(ctx: MarkdownContext, image: { data: ArrayBuffer; extension: string }): Promise<string> {
+  if (ctx.exportFormat === "single-html") {
+    return buildBinaryDataUrl(image.data, getMimeTypeForExtension(image.extension));
+  }
+  const outputName = uniqueOutputName(ctx, "link-preview", image.extension);
+  const outputPath = joinOutputPath(ctx.outputMode, ctx.assetsImagesDir, outputName);
+  await writeBinaryFile(ctx.app, outputPath, image.data, ctx.outputMode);
+  return toExportRelativePath(outputPath, ctx.outputRoot);
 }
 
 function uniqueOutputName(ctx: MarkdownContext, basename: string, extension: string): string {

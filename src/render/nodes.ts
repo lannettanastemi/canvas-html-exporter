@@ -3,7 +3,7 @@ import { getNodeFrame, getNodeMediaKind } from "./geometry";
 import { escapeAttribute, escapeHtml } from "./html";
 import { markdownToHtml } from "./markdown";
 import { getTheme, resolveNodeColors } from "./theme";
-import type { CanvasNode, HighlightingThemeChoice } from "./types";
+import type { CanvasNode, HighlightingThemeChoice, LinkCard } from "./types";
 
 const FOCUS_ICON_SVG = `<svg class="branch-focus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"></circle><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>`;
 
@@ -202,6 +202,35 @@ function buildAnchorAttributes(href: string): string {
   return `href="${safeHref}"`;
 }
 
+function externalAnchorAttributes(url: string): string {
+  return `href="${escapeAttribute(safeWebPreviewUrl(url))}" target="_blank" rel="noopener noreferrer"`;
+}
+
+function renderLinkCard(url: string, card: LinkCard): string {
+  let host = url;
+  let path = "";
+  try {
+    const parsed = new URL(url);
+    host = parsed.hostname.replace(/^www\./, "");
+    path = decodeURI(parsed.pathname + parsed.search).replace(/\/$/, "");
+  } catch {
+    path = "";
+  }
+  const image = card.image
+    ? `<a class="link-card-image" ${externalAnchorAttributes(url)}><img src="${escapeAttribute(card.image)}" alt="" loading="lazy"></a>`
+    : "";
+  return `<div class="link-card${card.image ? " has-image" : ""}">
+      ${image}
+      <div class="link-card-body">
+        <div class="link-card-host">${escapeHtml(host)}</div>
+        ${card.title ? `<div class="link-card-title">${escapeHtml(card.title)}</div>` : ""}
+        ${card.description ? `<div class="link-card-description">${escapeHtml(card.description)}</div>` : ""}
+        ${path ? `<div class="link-card-path">${escapeHtml(path)}</div>` : ""}
+        <a class="link-card-open" ${externalAnchorAttributes(url)}>Open website ↗</a>
+      </div>
+    </div>`;
+}
+
 async function renderNodeContent(
   node: CanvasNode,
   darkMode: boolean,
@@ -217,8 +246,18 @@ async function renderNodeContent(
     const url = typeof node.url === "string" ? node.url.trim() : "";
     if (!url) return "<p>Empty link node</p>";
     const displayName = escapeHtml(node.displayName || url);
-    const iframeSrc = escapeAttribute(safeWebPreviewUrl(url));
     const href = safeNavigationUrl(node.canvasHref || node.exportHtmlPath || url);
+    if (node.linkCard) return renderLinkCard(url, node.linkCard);
+    if (node.embedUrl) {
+      return `<div class="link-preview">
+      <div class="link-preview-header">
+        <a class="link-preview-title" ${externalAnchorAttributes(url)}>${displayName}</a>
+      </div>
+      <div class="link-offline-note" data-link-offline hidden>No internet connection is available.</div>
+      <div class="link-preview-frame"><iframe src="${escapeAttribute(safeWebPreviewUrl(node.embedUrl))}" title="${escapeAttribute(node.displayName || url)}" loading="lazy"></iframe></div>
+    </div>`;
+    }
+    const iframeSrc = escapeAttribute(safeWebPreviewUrl(url));
     return `<div class="link-preview">
       <div class="link-preview-header">
         <a class="link-preview-title" ${buildAnchorAttributes(href)}>${displayName}</a>

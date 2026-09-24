@@ -28,6 +28,12 @@ export type CanvasEdgeEnd =
   | "bar"
   | "blunt";
 
+export interface LinkCard {
+  title?: string;
+  description?: string;
+  image?: string;
+}
+
 export interface CanvasNode {
   id: string;
   type: string;
@@ -44,6 +50,8 @@ export interface CanvasNode {
   exportHtmlPath?: string;
   canvasHref?: string;
   displayName?: string;
+  embedUrl?: string;
+  linkCard?: LinkCard;
   fileKind?: "image" | "markdown" | "pdf" | "audio" | "video" | "file";
   previewText?: string;
   previewHtml?: string;

@@ -63,3 +63,63 @@ export function safeWebPreviewUrl(value: string): string {
   const normalized = safeNavigationUrl(value);
   return /^https?:\/\//i.test(normalized) ? normalized : "about:blank";
 }
+
+export function telegramEmbedUrl(value: string, darkMode: boolean): string | null {
+  const match = value.trim().match(/^https?:\/\/(?:www\.)?(?:t|telegram)\.me\/(?:s\/)?([A-Za-z][A-Za-z0-9_]{3,})\/(\d+)(?:[/?#].*)?$/i);
+  if (!match) return null;
+  return `https://t.me/${match[1]}/${match[2]}?embed=1${darkMode ? "&dark=1" : ""}`;
+}
+
+export function isFramingBlocked(headers: Record<string, string>): boolean {
+  const read = (name: string) => Object.entries(headers)
+    .filter(([key]) => key.toLowerCase() === name)
+    .map(([, value]) => value)
+    .join(",");
+  if (/\b(?:deny|sameorigin|allow-from)\b/i.test(read("x-frame-options"))) return true;
+  const frameAncestors = read("content-security-policy")
+    .split(/[;,]/)
+    .map((directive) => directive.trim())
+    .filter((directive) => /^frame-ancestors\b/i.test(directive));
+  return frameAncestors.some((directive) => !/(?:^|\s)\*(?:\s|$)/.test(directive.replace(/^frame-ancestors/i, " ")));
+}
+
+export type LinkPreviewMeta = {
+  title?: string;
+  description?: string;
+  image?: string;
+};
+
+export function extractLinkPreviewMeta(html: string, pageUrl: string): LinkPreviewMeta {
+  const meta: Record<string, string> = {};
+  for (const tag of html.match(/<meta\b[^>]*>/gi) || []) {
+    const key = tag.match(/\b(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase();
+    const content = tag.match(/\bcontent\s*=\s*["']([^"']*)["']/i)?.[1];
+    if (key && content && !(key in meta)) meta[key] = decodeHtmlEntities(content).trim();
+  }
+  const titleTag = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
+  const image = meta["og:image"] || meta["twitter:image"];
+  let absoluteImage: string | undefined;
+  if (image) {
+    try {
+      const resolved = new URL(image, pageUrl);
+      if (/^https?:$/.test(resolved.protocol)) absoluteImage = resolved.href;
+    } catch {
+      absoluteImage = undefined;
+    }
+  }
+  return {
+    title: meta["og:title"] || meta["twitter:title"] || (titleTag ? decodeHtmlEntities(titleTag).trim() : undefined) || undefined,
+    description: meta["og:description"] || meta["twitter:description"] || meta["description"] || undefined,
+    image: absoluteImage,
+  };
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&amp;/g, "&");
+}

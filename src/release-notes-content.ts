@@ -1,6 +1,6 @@
-export const CURRENT_RELEASE_NOTES_ID = "release-1.3.2";
+export const CURRENT_RELEASE_NOTES_ID = "release-1.9.0";
 
-export const CURRENT_RELEASE_NOTES_MARKDOWN = `# Canvas HTML Exporter 1.3.2: More reliable exports
+export const CURRENT_RELEASE_NOTES_MARKDOWN = `# Canvas HTML Exporter 1.9.0: More reliable exports
 
 This maintenance update improves links, assets, keyboard navigation and the
 automatic update description. Your existing export settings remain in place.
@@ -38,7 +38,7 @@ is not modified.
 
 ## Update descriptions after every version change
 
-This description opens automatically once for version 1.3.2, including when
+This description opens automatically once for version 1.9.0, including when
 you have already read an earlier version's description. It is marked as read
 only after you close it and does not open again on every Obsidian start.
 
