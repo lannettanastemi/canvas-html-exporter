@@ -3,16 +3,12 @@ import type { PluginSettings } from "./settings";
 export const PLUGIN_DATA_SCHEMA_VERSION = 1;
 
 export type PluginDataSnapshot = {
-  lastShownReleaseNotesId: string;
   settingsSource: unknown;
 };
 
 export type StoredPluginData = {
   schemaVersion: typeof PLUGIN_DATA_SCHEMA_VERSION;
   settings: PluginSettings;
-  ui: {
-    lastShownReleaseNotesId: string;
-  };
 };
 
 export function readPluginData(saved: unknown): PluginDataSnapshot {
@@ -20,29 +16,17 @@ export function readPluginData(saved: unknown): PluginDataSnapshot {
   if (typeof data.schemaVersion === "number" && data.schemaVersion > PLUGIN_DATA_SCHEMA_VERSION) {
     throw new Error(`Plugin data schema ${data.schemaVersion} requires a newer Canvas HTML Exporter. Existing data was not changed.`);
   }
-  const ui = asRecord(data.ui);
   const settingsSource = data.settings && typeof data.settings === "object"
     ? data.settings
     : saved;
 
-  return {
-    settingsSource,
-    lastShownReleaseNotesId: typeof ui.lastShownReleaseNotesId === "string"
-      ? ui.lastShownReleaseNotesId.trim()
-      : "",
-  };
+  return { settingsSource };
 }
 
-export function buildStoredPluginData(
-  settings: PluginSettings,
-  lastShownReleaseNotesId: string,
-): StoredPluginData {
+export function buildStoredPluginData(settings: PluginSettings): StoredPluginData {
   return {
     schemaVersion: PLUGIN_DATA_SCHEMA_VERSION,
     settings: { ...settings },
-    ui: {
-      lastShownReleaseNotesId: lastShownReleaseNotesId.trim(),
-    },
   };
 }
 

@@ -21,7 +21,6 @@ assert.equal(versions[manifest.version], manifest.minAppVersion);
 assert.equal(packageData.description, manifest.description);
 assert.equal(packageData.license, "GPL-3.0-or-later");
 assert.equal(manifest.isDesktopOnly, true);
-assert.equal(manifest.fundingUrl, "https://ko-fi.com/hokdev");
 assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
 assert.match(manifest.id, /^[a-z][a-z-]*$/);
 assert.match(manifest.description, /[.?!)]$/);

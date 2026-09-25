@@ -630,10 +630,9 @@ await test("renders page header counts for nodes and edges", async () => {
   assert.match(html, /const groupNodeIds = new Set\(\["group"\]\)/);
   assert.match(html, /const hiddenGroupCount = \[\.\.\.hiddenNodeIds\]/);
   assert.match(html, /const hiddenNodeCount = hiddenNodeIds\.size - hiddenGroupCount/);
-  assert.match(html, /"1 hidden node"/);
-  assert.match(html, /hiddenNodeCount \+ " hidden nodes"/);
-  assert.match(html, /"1 hidden group"/);
-  assert.match(html, /hiddenGroupCount \+ " hidden groups"/);
+  assert.match(html, /t\("folding\.hiddenNodes", \{ n: hiddenNodeCount \}\)/);
+  assert.match(html, /t\("folding\.hiddenGroups", \{ n: hiddenGroupCount \}\)/);
+  assert.match(html, /"folding\.hiddenNodes":\["\{n\} hidden node","\{n\} hidden nodes"\]/);
   assert.match(html, /hiddenNodeSummary\.hidden = hiddenParts\.length === 0/);
 });
 
@@ -1126,7 +1125,7 @@ await test("starts in no-folding mode while retaining the menu and controls", as
       assert.match(html, /class="folding-menu-separator folding-action-control" hidden>/);
       assert.match(html, /id="focus-controls-visibility-button"[^>]+hidden>Hide focus controls<\/button>/);
       assert.match(html, /let foldingControlsEnabled = false/);
-      assert.match(html, /foldingModeButton\.textContent = foldingControlsEnabled\s+\? "No folding"\s+: "Enable folding"/);
+      assert.match(html, /foldingModeButton\.textContent = foldingControlsEnabled\s+\? t\("folding\.noFolding"\)\s+: t\("folding\.enable"\)/);
       assert.match(html, /control\.hidden = !foldingControlsEnabled \|\| !foldingNodeControlsVisible/);
       assert.match(html, /const importedHiddenNodeIds = new Set\(\[\]\)/);
       assert.match(html, /const importedHiddenEdgeIds = new Set\(\[\]\)/);
@@ -1276,13 +1275,13 @@ await test("renders cycle-safe branch controls in both export modes", async () =
     assert.match(html, /window\.toggleFocusControlsVisibility = function\(\)/);
     assert.match(html, /window\.restoreImportedFolding = function\(\) \{\s+foldingControlsEnabled = true;\s+applyImportedFolding\(false\)/);
     assert.match(html, /foldingMenu\.addEventListener\("mouseleave", \(\) => \{\s+foldingMenu\.removeAttribute\("open"\)/);
-    assert.match(html, /foldingModeButton\.textContent = foldingControlsEnabled\s+\? "No folding"\s+: "Enable folding"/);
+    assert.match(html, /foldingModeButton\.textContent = foldingControlsEnabled\s+\? t\("folding\.noFolding"\)\s+: t\("folding\.enable"\)/);
     assert.match(html, /collapsedNodeIds\.has\(edge\.fromId\)/);
     assert.match(html, /!connectedGroupNodeIds\.has\(groupId\)/);
     assert.match(html, /hasVisibleAlternativeParent/);
     assert.doesNotMatch(html, /revealedNodeIdsByRestriction/);
-    assert.match(html, /foldingControlsVisibilityButton\.textContent = foldingNodeControlsVisible\s+\? "Hide folding controls"\s+: "Show folding controls"/);
-    assert.match(html, /focusControlsVisibilityButton\.textContent = focusNodeControlsVisible\s+\? "Hide focus controls"\s+: "Show focus controls"/);
+    assert.match(html, /foldingControlsVisibilityButton\.textContent = foldingNodeControlsVisible\s+\? t\("folding\.hideControls"\)\s+: t\("folding\.showControls"\)/);
+    assert.match(html, /focusControlsVisibilityButton\.textContent = focusNodeControlsVisible\s+\? t\("folding\.hideFocus"\)\s+: t\("folding\.showFocus"\)/);
     assert.match(html, /control\.addEventListener\("click"/);
     assert.match(html, /document\.querySelectorAll\("\.branch-focus-control\[data-focus-node-id\]"\)/);
     const runtime = html.match(/<script>([\s\S]+)<\/script>/)?.[1] || "";

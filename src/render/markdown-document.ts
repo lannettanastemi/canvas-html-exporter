@@ -1,4 +1,5 @@
 import { escapeHtml } from "./html";
+import { t } from "./i18n";
 import { buildExporterBuildMeta, EXPORTER_SIGNATURE } from "./metadata";
 import { buildCalloutCss, buildCanvasColorVariables, buildHeadingColorCss, buildInlineStyleCss, getTheme, indentCssBlock } from "./theme";
 import type { HighlightingThemeChoice } from "./types";
@@ -175,7 +176,7 @@ export function buildMarkdownDocumentHtml(
 <body>
   <main class="md-page">
     <div class="md-page-toolbar">
-      ${canvasHref ? `<a class="md-page-canvas-link" href="${escapeHtml(canvasHref)}">Canvas</a>` : ""}
+      ${canvasHref ? `<a class="md-page-canvas-link" href="${escapeHtml(canvasHref)}">${t("page.canvas")}</a>` : ""}
     </div>
     <h1>${escapeHtml(title)}</h1>
     ${bodyHtml}

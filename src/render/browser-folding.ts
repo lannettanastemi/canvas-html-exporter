@@ -155,12 +155,12 @@ export function buildBrowserFolding({ hasImportedFolding }: Pick<BrowserRuntimeP
       function formatHiddenItemCounts(counts) {
         const parts = [];
         if (counts.nodeCount > 0) {
-          parts.push(counts.nodeCount + (counts.nodeCount === 1 ? " hidden node" : " hidden nodes"));
+          parts.push(t("folding.hiddenNodes", { n: counts.nodeCount }));
         }
         if (counts.groupCount > 0) {
-          parts.push(counts.groupCount + (counts.groupCount === 1 ? " hidden group" : " hidden groups"));
+          parts.push(t("folding.hiddenGroups", { n: counts.groupCount }));
         }
-        return parts.join(" and ");
+        return parts.join(t("folding.and"));
       }
 
       function updateFoldingVisibility() {
@@ -276,8 +276,8 @@ export function buildBrowserFolding({ hasImportedFolding }: Pick<BrowserRuntimeP
           );
           control.setAttribute("aria-expanded", String(!displayedHiddenBranch));
           const branchControlLabel = disabledByHiddenGroup
-            ? "Branch hidden by folded group"
-            : (hasHiddenBranch ? "Expand branch" : "Collapse branch")
+            ? t("folding.branchHidden")
+            : (hasHiddenBranch ? t("folding.expandBranch") : t("folding.collapseBranch"))
             + " · "
             + (hasHiddenBranch && hiddenItemCounts.itemCount > 0
               ? formatHiddenItemCounts(hiddenItemCounts)
@@ -302,7 +302,7 @@ export function buildBrowserFolding({ hasImportedFolding }: Pick<BrowserRuntimeP
           if (counts.groupCount > 0) {
             countParts.push(counts.groupCount + (counts.groupCount === 1 ? " contained group" : " contained groups"));
           }
-          const label = (isCollapsed ? "Expand group" : "Collapse group")
+          const label = (isCollapsed ? t("folding.expandGroup") : t("folding.collapseGroup"))
             + (countParts.length > 0 ? " · " + countParts.join(" and ") : "");
           control.setAttribute("aria-label", label);
           control.setAttribute("title", label);
@@ -311,7 +311,7 @@ export function buildBrowserFolding({ hasImportedFolding }: Pick<BrowserRuntimeP
           const nodeId = control.getAttribute("data-focus-node-id") || "";
           const isFocused = nodeId === focusedBranchNodeId;
           const descendantCount = getDescendants(nodeId).length;
-          const focusTarget = groupNodeIds.has(nodeId) ? "group" : "node";
+          const focusTarget = groupNodeIds.has(nodeId) ? t("folding.targetGroup") : t("folding.targetNode");
           control.hidden = !foldingControlsEnabled
             || !focusNodeControlsVisible
             || collapsedNodeIds.has(nodeId);
@@ -319,15 +319,15 @@ export function buildBrowserFolding({ hasImportedFolding }: Pick<BrowserRuntimeP
           control.setAttribute("aria-pressed", String(isFocused));
           control.setAttribute(
             "aria-label",
-            isFocused ? "Exit focus" : descendantCount > 0 ? "Focus branch" : "Focus " + focusTarget,
+            isFocused ? t("folding.exitFocus") : descendantCount > 0 ? t("folding.focusBranch") : t("folding.focusTarget", { target: focusTarget }),
           );
           control.setAttribute(
             "title",
             isFocused
-              ? "Exit focus"
+              ? t("folding.exitFocus")
               : descendantCount > 0
-                ? "Focus branch · " + descendantCount + " descendants"
-                : "Focus " + focusTarget,
+                ? t("folding.focusBranchCount", { n: descendantCount })
+                : t("folding.focusTarget", { target: focusTarget }),
           );
         });
         document.querySelectorAll(".minimap-node[data-node-id]").forEach((node) => {
@@ -341,21 +341,21 @@ export function buildBrowserFolding({ hasImportedFolding }: Pick<BrowserRuntimeP
         });
         if (foldingModeButton) {
           foldingModeButton.textContent = foldingControlsEnabled
-            ? "No folding"
-            : "Enable folding";
+            ? t("folding.noFolding")
+            : t("folding.enable");
           foldingModeButton.classList.toggle("is-active", !foldingControlsEnabled);
           foldingModeButton.setAttribute("aria-pressed", String(!foldingControlsEnabled));
         }
         if (foldingControlsVisibilityButton) {
           foldingControlsVisibilityButton.textContent = foldingNodeControlsVisible
-            ? "Hide folding controls"
-            : "Show folding controls";
+            ? t("folding.hideControls")
+            : t("folding.showControls");
           foldingControlsVisibilityButton.setAttribute("aria-pressed", String(foldingNodeControlsVisible));
         }
         if (focusControlsVisibilityButton) {
           focusControlsVisibilityButton.textContent = focusNodeControlsVisible
-            ? "Hide focus controls"
-            : "Show focus controls";
+            ? t("folding.hideFocus")
+            : t("folding.showFocus");
           focusControlsVisibilityButton.setAttribute("aria-pressed", String(focusNodeControlsVisible));
         }
         if (foldingFocusExitButton) {
@@ -367,14 +367,10 @@ export function buildBrowserFolding({ hasImportedFolding }: Pick<BrowserRuntimeP
           const hiddenNodeCount = hiddenNodeIds.size - hiddenGroupCount;
           const hiddenParts = [];
           if (hiddenNodeCount > 0) {
-            hiddenParts.push(hiddenNodeCount === 1
-              ? "1 hidden node"
-              : hiddenNodeCount + " hidden nodes");
+            hiddenParts.push(t("folding.hiddenNodes", { n: hiddenNodeCount }));
           }
           if (hiddenGroupCount > 0) {
-            hiddenParts.push(hiddenGroupCount === 1
-              ? "1 hidden group"
-              : hiddenGroupCount + " hidden groups");
+            hiddenParts.push(t("folding.hiddenGroups", { n: hiddenGroupCount }));
           }
           hiddenNodeSummary.hidden = hiddenParts.length === 0;
           hiddenNodeSummary.textContent = hiddenParts.length > 0

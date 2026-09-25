@@ -6,9 +6,6 @@ import { CanvasHtmlExporterSettingTab, DEFAULT_SETTINGS, normalizePluginSettings
 import { normalizeThemeColor } from "./helpers/color-helpers";
 import { resolveInitialCanvasFoldState } from "./integrations/canvas-folding";
 import { buildStoredPluginData, readPluginData } from "./plugin-data";
-import { CURRENT_RELEASE_NOTES_ID } from "./release-notes-content";
-import { openCurrentReleaseNotes } from "./ui/release-notes";
-import { openPluginReadme } from "./ui/readme";
 import { collectCanvasColorKeys } from "./export/canvas-data";
 import { createLinkProber } from "./integrations/link-probe";
 
@@ -27,11 +24,8 @@ const FALLBACK_HEADING_COLORS: HeadingColorMap = {
 
 export default class CanvasHtmlExporterPlugin extends Plugin {
   settings: PluginSettings = DEFAULT_SETTINGS;
-  private lastShownReleaseNotesId = "";
   private disposed = false;
   private exportInProgress = false;
-  private readonly modalClosers = new Set<() => void>();
-  private releaseNotesTask: Promise<boolean> | null = null;
   private saveQueue: Promise<void> = Promise.resolve();
 
   async onload(): Promise<void> {
@@ -52,21 +46,10 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
     });
 
     this.addSettingTab(new CanvasHtmlExporterSettingTab(this.app, this));
-
-    this.app.workspace.onLayoutReady(() => {
-      if (!this.disposed) void this.showCurrentReleaseNotesOnce();
-    });
   }
 
   onunload(): void {
     this.disposed = true;
-    for (const close of this.modalClosers) close();
-    this.modalClosers.clear();
-  }
-
-  private registerModalCleanup(cleanup: () => void): () => void {
-    this.modalClosers.add(cleanup);
-    return () => { this.modalClosers.delete(cleanup); };
   }
 
   async exportCurrentCanvas(): Promise<void> {
@@ -419,59 +402,15 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
     const saved: unknown = await this.loadData();
     const pluginData = readPluginData(saved);
     this.settings = normalizePluginSettings(pluginData.settingsSource);
-    this.lastShownReleaseNotesId = pluginData.lastShownReleaseNotesId;
   }
 
   async saveSettings(): Promise<void> {
     await this.savePluginData();
   }
 
-  showLastUpdate(): void {
-    void this.showCurrentReleaseNotesOnce(true);
-  }
-
-  showReadme(): void {
-    if (!this.disposed) openPluginReadme(this.app, (cleanup) => this.registerModalCleanup(cleanup));
-  }
-
-  private async showCurrentReleaseNotesOnce(force = false): Promise<void> {
-    if (!force && this.lastShownReleaseNotesId === CURRENT_RELEASE_NOTES_ID) return;
-
-    if (!(await this.openLastUpdate()) || this.disposed) return;
-    if (this.lastShownReleaseNotesId === CURRENT_RELEASE_NOTES_ID) return;
-
-    this.lastShownReleaseNotesId = CURRENT_RELEASE_NOTES_ID;
-    try {
-      await this.savePluginData();
-    } catch (error) {
-      console.error("[canvas-html-exporter] Could not save release-note state", error);
-      new Notice("The feature update description may appear again after restart.", 5000);
-    }
-  }
-
-  private openLastUpdate(): Promise<boolean> {
-    if (this.releaseNotesTask) return this.releaseNotesTask;
-    this.releaseNotesTask = this.openLastUpdateModal().finally(() => {
-      this.releaseNotesTask = null;
-    });
-    return this.releaseNotesTask;
-  }
-
-  private async openLastUpdateModal(): Promise<boolean> {
-    try {
-      if (this.disposed) return false;
-      await openCurrentReleaseNotes(this.app, (cleanup) => this.registerModalCleanup(cleanup));
-      return true;
-    } catch (error) {
-      console.error("[canvas-html-exporter] Could not open release notes", error);
-      new Notice("Canvas HTML exporter could not open its feature update description.", 5000);
-      return false;
-    }
-  }
-
   private async savePluginData(): Promise<void> {
     if (this.disposed) return;
-    const snapshot = buildStoredPluginData(this.settings, this.lastShownReleaseNotesId);
+    const snapshot = buildStoredPluginData(this.settings);
     const write = this.saveQueue.catch(() => {}).then(() => this.saveData(snapshot));
     this.saveQueue = write;
     await write;

@@ -24,31 +24,26 @@ const settings: PluginSettings = {
   highlightingTheme: "shiki",
   showMinimap: true,
   showSearch: true,
+  language: "ru",
+  publishRepoPath: "",
 };
 
 test("reads legacy top-level settings without losing the migration source", () => {
   const legacy = { ...settings };
-  assert.deepEqual(readPluginData(legacy), {
-    settingsSource: legacy,
-    lastShownReleaseNotesId: "",
-  });
+  assert.deepEqual(readPluginData(legacy), { settingsSource: legacy });
 });
 
-test("reads settings and UI state from versioned plugin data", () => {
+test("reads settings from versioned plugin data and ignores stale UI state", () => {
   assert.deepEqual(readPluginData({
     schemaVersion: 1,
     settings,
     ui: { lastShownReleaseNotesId: " folding-v1 " },
-  }), {
-    settingsSource: settings,
-    lastShownReleaseNotesId: "folding-v1",
-  });
+  }), { settingsSource: settings });
 });
 
-test("builds versioned plugin data with normalized release-note state", () => {
-  assert.deepEqual(buildStoredPluginData(settings, " folding-v1 "), {
+test("builds versioned plugin data", () => {
+  assert.deepEqual(buildStoredPluginData(settings), {
     schemaVersion: PLUGIN_DATA_SCHEMA_VERSION,
     settings,
-    ui: { lastShownReleaseNotesId: "folding-v1" },
   });
 });

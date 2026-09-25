@@ -1,3 +1,4 @@
+import type { UiLanguage } from "./i18n";
 import type { CanvasFoldState } from "../folding/types";
 
 export type CanvasNodeShape =
@@ -96,6 +97,7 @@ export interface ExportOptions {
   exportFormat?: "package" | "single-html";
   embeddedPages?: EmbeddedPage[];
   initialFoldState?: CanvasFoldState;
+  language?: UiLanguage;
 }
 
 export interface EmbeddedPage {

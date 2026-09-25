@@ -1,4 +1,5 @@
 import type { getTheme } from "./theme";
+import { t } from "./i18n";
 import { indentCssBlock, scopeCalloutCss } from "./theme";
 
 type CanvasStyleParameters = {
@@ -696,7 +697,7 @@ export function buildCanvasStyles({ canvasColorVars, theme, bounds, headingCss, 
       pointer-events: none;
     }
     .link-preview-frame:not(.is-active)::after {
-      content: "Click to interact";
+      content: ${JSON.stringify(t("link.interact"))};
       position: absolute;
       left: 50%;
       bottom: 12px;

@@ -19,6 +19,7 @@ import { safeNavigationUrl, safeWebPreviewUrl, embedSizeAttributes, normalizeWik
 import { getHrefForMarkdownPage } from "../helpers/path-helpers";
 import { buildPreviewText } from "../helpers/preview-helpers";
 import type { ExportFormatChoice } from "../settings";
+import { withUiLanguage, type UiLanguage } from "../render/i18n";
 import type { CanvasFoldState } from "../folding/types";
 import { filterCanvasFoldState } from "../folding/export-state";
 
@@ -36,6 +37,7 @@ export type ExportSettings = {
   foldingInitiallyEnabled?: boolean;
   initialFoldState?: CanvasFoldState;
   probeLink?: LinkProber;
+  language?: UiLanguage;
 };
 
 export type LinkProbeResult = {
@@ -181,6 +183,14 @@ export async function exportCanvasPackage(
   canvasFile: TFile,
   settings: ExportSettings,
 ): Promise<ExportResult> {
+  return withUiLanguage(settings.language, () => exportCanvasPackageInLanguage(app, canvasFile, settings));
+}
+
+async function exportCanvasPackageInLanguage(
+  app: App,
+  canvasFile: TFile,
+  settings: ExportSettings,
+): Promise<ExportResult> {
   const rawContent = await app.vault.read(canvasFile);
   let parsed: unknown;
 
@@ -271,6 +281,7 @@ export async function exportCanvasPackage(
       exportFormat,
       embeddedPages: ctx.singleHtmlPages,
       initialFoldState,
+      language: settings.language,
     },
   };
 }
@@ -299,6 +310,10 @@ async function prepareNode(ctx: MarkdownContext, node: CanvasNode): Promise<Canv
           image: probe.image ? await writeLinkPreviewImage(ctx, probe.image) : undefined,
         },
       };
+    }
+
+    if (/^https?:\/\//i.test(url)) {
+      return { ...node, displayName: url, canvasHref: url };
     }
 
     const exportHtmlPath = await exportLinkNodePage(ctx, node);

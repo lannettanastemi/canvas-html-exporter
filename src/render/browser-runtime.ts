@@ -8,12 +8,14 @@ import { buildBrowserViewport } from "./browser-viewport";
 import { serializeScriptData } from "./html";
 import { normalizeCssColorValue } from "./theme";
 import { buildViewerChromeRuntime } from "./viewer-chrome";
+import { buildRuntimeI18n } from "./i18n";
 
 
 
 export function buildBrowserRuntime({ exportFormat, options, theme, edgePaletteColors, edgesData, searchEntries, foldingGraph, groupNodeIds, initialFoldState, nodes, foldingInitiallyEnabled, bounds, hasImportedFolding }: BrowserRuntimeParameters): string {
   return `
     (() => {
+${buildRuntimeI18n()}
       const exportFormat = ${serializeScriptData(exportFormat)};
       const baseDocumentTitle = ${serializeScriptData(options.title)};
       const toolbar = document.querySelector(".toolbar");

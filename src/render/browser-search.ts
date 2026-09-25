@@ -69,13 +69,13 @@ export function buildBrowserSearch(): string {
         if (!searchResults || !searchSummary) return;
         activeSearchIndex = matches.length ? 0 : -1;
         if (!query.trim()) {
-          searchSummary.textContent = "Enter a search term to find matching nodes.";
+          searchSummary.textContent = t("search.empty");
           clearChildren(searchResults);
           return;
         }
           searchSummary.textContent = matches.length
-          ? matches.length + " results · Press Enter to jump to the active result"
-          : "No results found for this search term.";
+          ? t("search.results", { n: matches.length })
+          : t("search.none");
         clearChildren(searchResults);
         for (const entry of matches) {
           const item = document.createElement("li");

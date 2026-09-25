@@ -4,6 +4,7 @@ import { escapeAttribute, escapeHtml } from "./html";
 import { markdownToHtml } from "./markdown";
 import { getTheme, resolveNodeColors } from "./theme";
 import type { CanvasNode, HighlightingThemeChoice, LinkCard } from "./types";
+import { t } from "./i18n";
 
 const FOCUS_ICON_SVG = `<svg class="branch-focus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"></circle><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>`;
 
@@ -44,10 +45,10 @@ export async function renderNode(
 
   const content = type === "group" ? "" : await renderNodeContent(node, darkMode, highlightingTheme);
   const foldingControlHiddenAttribute = foldingControlsInitiallyHidden ? " hidden" : "";
-  const focusTarget = type === "group" ? "group" : "node";
-  const focusControl = `<button class="branch-focus-control" type="button" data-focus-node-id="${escapeAttribute(node.id)}" aria-label="${descendantCount > 0 ? "Focus branch" : `Focus ${focusTarget}`}" aria-pressed="false" title="${descendantCount > 0 ? `Focus branch · ${descendantCount} ${descendantCount === 1 ? "descendant" : "descendants"}` : `Focus ${focusTarget}`}"${foldingControlHiddenAttribute}>${FOCUS_ICON_SVG}</button>`;
+  const focusTarget = type === "group" ? t("folding.targetGroup") : t("folding.targetNode");
+  const focusControl = `<button class="branch-focus-control" type="button" data-focus-node-id="${escapeAttribute(node.id)}" aria-label="${descendantCount > 0 ? t("folding.focusBranch") : t("folding.focusTarget", { target: focusTarget })}" aria-pressed="false" title="${descendantCount > 0 ? t("folding.focusBranchCount", { n: descendantCount }) : t("folding.focusTarget", { target: focusTarget })}"${foldingControlHiddenAttribute}>${FOCUS_ICON_SVG}</button>`;
   const branchControl = descendantCount > 0
-    ? `<button class="branch-control" type="button" data-branch-node-id="${escapeAttribute(node.id)}" aria-expanded="true" aria-label="Collapse branch · ${descendantCount} ${descendantCount === 1 ? "descendant" : "descendants"}" title="Collapse branch · ${descendantCount} ${descendantCount === 1 ? "descendant" : "descendants"}"${foldingControlHiddenAttribute}>−</button>`
+    ? `<button class="branch-control" type="button" data-branch-node-id="${escapeAttribute(node.id)}" aria-expanded="true" aria-label="${t("folding.collapseBranchCount", { n: descendantCount })}" title="${t("folding.collapseBranchCount", { n: descendantCount })}"${foldingControlHiddenAttribute}>−</button>`
     : "";
   const nodeControls = focusControl || branchControl
     ? `<div class="node-controls">${focusControl}${branchControl}</div>`
@@ -76,9 +77,9 @@ export function renderGroupTitle(
 ): string {
   const frame = getNodeFrame(node, offsetX, offsetY);
   const colors = resolveNodeColors(node, theme, canvasColors);
-  const groupName = (node.label || node.text || "").trim() || "Group";
+  const groupName = (node.label || node.text || "").trim() || t("kind.group");
   const groupControl = groupContentCount > 0
-    ? `<button class="advanced-group-control${node.advancedGroupCollapsed ? " has-hidden-count" : ""}" type="button" data-advanced-group-id="${escapeAttribute(node.id)}" aria-expanded="${String(!node.advancedGroupCollapsed)}" aria-label="${node.advancedGroupCollapsed ? "Expand" : "Collapse"} group · ${groupContentCount} contained ${groupContentCount === 1 ? "item" : "items"}" title="${node.advancedGroupCollapsed ? "Expand" : "Collapse"} group · ${groupContentCount} contained ${groupContentCount === 1 ? "item" : "items"}">${node.advancedGroupCollapsed ? String(groupContentCount) : "−"}</button>`
+    ? `<button class="advanced-group-control${node.advancedGroupCollapsed ? " has-hidden-count" : ""}" type="button" data-advanced-group-id="${escapeAttribute(node.id)}" aria-expanded="${String(!node.advancedGroupCollapsed)}" aria-label="${t("folding.groupItems", { n: groupContentCount, action: node.advancedGroupCollapsed ? t("folding.expand") : t("folding.collapse") })}" title="${t("folding.groupItems", { n: groupContentCount, action: node.advancedGroupCollapsed ? t("folding.expand") : t("folding.collapse") })}">${node.advancedGroupCollapsed ? String(groupContentCount) : "−"}</button>`
     : "";
   return `<div id="group-title-${escapeAttribute(node.id)}" class="group-title" data-group-title-node-id="${escapeAttribute(node.id)}" style="left:${frame.left}px;top:${frame.top}px;max-width:${frame.width}px;--node-border-color:${colors.border};"><span class="group-title-text">${escapeHtml(groupName)}</span>${groupControl}</div>`;
 }
@@ -161,15 +162,15 @@ function defaultNodeTitle(node: CanvasNode): string {
 
 function humanizeNodeKind(node: CanvasNode): string {
   const type = (node.type || "text").toLowerCase();
-  if (type === "file" && node.fileKind === "markdown") return "Markdown";
-  if (type === "file" && node.fileKind === "image") return "Image";
-  if (type === "file" && node.fileKind === "pdf") return "PDF";
-  if (type === "file" && node.fileKind === "audio") return "Audio";
-  if (type === "file" && node.fileKind === "video") return "Video";
-  if (type === "file") return "File";
-  if (type === "link") return "Link";
-  if (type === "group") return "Group";
-  return "Text";
+  if (type === "file" && node.fileKind === "markdown") return t("kind.markdown");
+  if (type === "file" && node.fileKind === "image") return t("kind.image");
+  if (type === "file" && node.fileKind === "pdf") return t("kind.pdf");
+  if (type === "file" && node.fileKind === "audio") return t("kind.audio");
+  if (type === "file" && node.fileKind === "video") return t("kind.video");
+  if (type === "file") return t("kind.file");
+  if (type === "link") return t("kind.link");
+  if (type === "group") return t("kind.group");
+  return t("kind.text");
 }
 
 function normalizeSearchText(value: string | undefined): string {
@@ -226,7 +227,7 @@ function renderLinkCard(url: string, card: LinkCard): string {
         ${card.title ? `<div class="link-card-title">${escapeHtml(card.title)}</div>` : ""}
         ${card.description ? `<div class="link-card-description">${escapeHtml(card.description)}</div>` : ""}
         ${path ? `<div class="link-card-path">${escapeHtml(path)}</div>` : ""}
-        <a class="link-card-open" ${externalAnchorAttributes(url)}>Open website ↗</a>
+        <a class="link-card-open" ${externalAnchorAttributes(url)}>${t("link.open")}</a>
       </div>
     </div>`;
 }
@@ -244,7 +245,7 @@ async function renderNodeContent(
 
   if (type === "link") {
     const url = typeof node.url === "string" ? node.url.trim() : "";
-    if (!url) return "<p>Empty link node</p>";
+    if (!url) return `<p>${t("node.emptyLink")}</p>`;
     const displayName = escapeHtml(node.displayName || url);
     const href = safeNavigationUrl(node.canvasHref || node.exportHtmlPath || url);
     if (node.linkCard) return renderLinkCard(url, node.linkCard);
@@ -253,17 +254,18 @@ async function renderNodeContent(
       <div class="link-preview-header">
         <a class="link-preview-title" ${externalAnchorAttributes(url)}>${displayName}</a>
       </div>
-      <div class="link-offline-note" data-link-offline hidden>No internet connection is available.</div>
+      <div class="link-offline-note" data-link-offline hidden>${t("link.offline")}</div>
       <div class="link-preview-frame"><iframe src="${escapeAttribute(safeWebPreviewUrl(node.embedUrl))}" title="${escapeAttribute(node.displayName || url)}" loading="lazy"></iframe></div>
     </div>`;
     }
     const iframeSrc = escapeAttribute(safeWebPreviewUrl(url));
+    const titleAttributes = /^https?:\/\//i.test(href) ? externalAnchorAttributes(href) : buildAnchorAttributes(href);
     return `<div class="link-preview">
       <div class="link-preview-header">
-        <a class="link-preview-title" ${buildAnchorAttributes(href)}>${displayName}</a>
+        <a class="link-preview-title" ${titleAttributes}>${displayName}</a>
       </div>
-      <div class="link-offline-note" data-link-offline hidden>No internet connection is available.</div>
-      <div class="link-offline-note" data-link-blocked hidden>This website may not allow embedded previews. Use the heading above.</div>
+      <div class="link-offline-note" data-link-offline hidden>${t("link.offline")}</div>
+      <div class="link-offline-note" data-link-blocked hidden>${t("link.blocked")}</div>
       <div class="link-preview-frame"><iframe src="${iframeSrc}" title="${escapeAttribute(node.displayName || url)}" loading="lazy"></iframe></div>
     </div>`;
   }
@@ -290,7 +292,7 @@ async function renderNodeContent(
 
     if (node.fileKind === "pdf") {
       const pdfHref = escapeAttribute(node.exportPath || node.file || "");
-      if (!pdfHref) return "<p>Empty PDF node</p>";
+      if (!pdfHref) return `<p>${t("node.emptyPdf")}</p>`;
       const viewerHref = escapeAttribute(node.canvasHref || node.exportPath || node.file || "");
       const pdfTitle = escapeHtml(node.displayName || node.file || "PDF");
       const pdfTitleAttr = escapeAttribute(node.displayName || node.file || "PDF");
@@ -300,14 +302,14 @@ async function renderNodeContent(
     const mediaKind = getNodeMediaKind(node);
     if (mediaKind) {
       const mediaHref = escapeAttribute(node.exportPath || node.file || "");
-      if (!mediaHref) return "<p>Empty media node</p>";
+      if (!mediaHref) return `<p>${t("node.emptyMedia")}</p>`;
       const mediaTitle = escapeHtml(node.displayName || node.file || "Media");
       const mediaTitleAttr = escapeAttribute(node.displayName || node.file || "Media");
       const tag = mediaKind === "audio" ? "audio" : "video";
       return `<div class="media-embed ${tag}-embed"><a class="media-title-link" ${buildAnchorAttributes(mediaHref)}>${mediaTitle}</a><${tag} src="${mediaHref}" title="${mediaTitleAttr}" controls preload="metadata"></${tag}></div>`;
     }
 
-    if (!href) return "<p>Empty file node</p>";
+    if (!href) return `<p>${t("node.emptyFile")}</p>`;
     return `<p><a class="file-chip" ${buildAnchorAttributes(href)}>${displayName}</a></p>`;
   }
 

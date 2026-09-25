@@ -13,6 +13,8 @@ const ICON_PATHS = {
   chevronLeft: "M15 5l-7 7 7 7",
   chevronRight: "M9 5l7 7-7 7",
   external: "M14 4.5h5.5V10M19.5 4.5l-8 8M17.5 13.5v4.5a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8A1.5 1.5 0 0 1 6 6.5h4.5",
+  play: "M8 5.5v13l10.5-6.5z",
+  link: "M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.2 1.2M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1.2-1.2",
 } as const;
 
 export type ViewerIconName = keyof typeof ICON_PATHS;
@@ -523,6 +525,142 @@ export function buildViewerChromeStyles(theme: Theme): string {
       border-radius: 0;
       object-fit: contain;
     }
+    .viewport {
+      touch-action: none;
+    }
+    .cx-node-link {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      z-index: 6;
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 1px solid var(--cx-border);
+      border-radius: 999px;
+      background: var(--cx-surface-strong);
+      box-shadow: var(--cx-shadow);
+      color: ${theme.text};
+      cursor: pointer;
+      opacity: 0;
+      transform: scale(var(--cx-inverse, 1));
+      transform-origin: bottom right;
+      transition: opacity 0.15s ease, background-color 0.15s ease;
+    }
+    .node:hover > .cx-node-link,
+    .cx-node-link:focus-visible {
+      opacity: 1;
+    }
+    .cx-node-link:hover {
+      color: var(--cx-accent);
+    }
+    .node.cx-flash {
+      animation: cx-flash 1.7s ease-out;
+    }
+    @keyframes cx-flash {
+      0%, 45% { outline: 4px solid var(--cx-accent); outline-offset: 6px; }
+      100% { outline: 4px solid transparent; outline-offset: 16px; }
+    }
+    .cx-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 76px;
+      z-index: 50;
+      padding: 10px 16px;
+      border-radius: 999px;
+      color: ${theme.text};
+      font-size: 0.85rem;
+      font-weight: 600;
+      pointer-events: none;
+      opacity: 0;
+      translate: -50% 8px;
+      transition: opacity 0.2s ease, translate 0.4s var(--cx-spring);
+    }
+    .cx-toast.is-visible {
+      opacity: 1;
+      translate: -50% 0;
+    }
+    .cx-presenting .node:not(.is-presenting),
+    .cx-presenting .group-title {
+      opacity: 0.2;
+      transition: opacity 0.35s ease;
+    }
+    .cx-presenting #edge-layer {
+      opacity: 0.35;
+      transition: opacity 0.35s ease;
+    }
+    .cx-presenting .node.is-presenting {
+      box-shadow: 0 0 0 4px var(--cx-accent), 0 24px 60px rgba(0, 0, 0, 0.45);
+      transition: box-shadow 0.35s ease;
+    }
+    .present-bar {
+      position: absolute;
+      left: 50%;
+      bottom: 14px;
+      z-index: 12;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px;
+      border-radius: 999px;
+      translate: -50% 0;
+      animation: cx-pop-in 0.4s var(--cx-spring) both;
+    }
+    .present-bar[hidden] {
+      display: none;
+    }
+    .present-bar button {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: ${theme.text};
+      cursor: pointer;
+      transition: background-color 0.15s ease, scale 0.76s var(--cx-bounce);
+    }
+    .present-bar button:hover:not(:disabled) {
+      background: var(--cx-hover);
+    }
+    .present-bar button:active:not(:disabled) {
+      scale: 0.9;
+      transition: background-color 0.15s ease, scale 0.36s var(--cx-lift);
+    }
+    .present-bar button:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    .present-counter {
+      min-width: 76px;
+      text-align: center;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    @media (pointer: coarse) {
+      .toolbar .toolbar-actions > button,
+      .toolbar .toolbar-actions > .toolbar-menu > summary {
+        width: 42px;
+        height: 42px;
+      }
+      .zoom-pill button {
+        min-width: 42px;
+        height: 42px;
+      }
+      .cx-node-link {
+        display: none;
+      }
+    }
+    @media (max-width: 640px) {
+      .cx-presenting .zoom-pill {
+        display: none;
+      }
+    }
     .node-content img {
       cursor: zoom-in;
     }
@@ -550,7 +688,9 @@ export function buildViewerChromeRuntime(): string {
       if (zoomLevelButton && canvas) {
         const syncZoomLevel = () => {
           const match = /scale\\(([\\d.]+)\\)/.exec(canvas.style.transform || "");
-          zoomLevelButton.textContent = Math.round((match ? parseFloat(match[1]) : 1) * 100) + "%";
+          const scaleValue = match ? parseFloat(match[1]) : 1;
+          zoomLevelButton.textContent = Math.round(scaleValue * 100) + "%";
+          viewport.style.setProperty("--cx-inverse", String(Math.min(3, Math.max(1, 1 / (scaleValue || 1)))));
         };
         new MutationObserver(syncZoomLevel).observe(canvas, { attributes: true, attributeFilter: ["style"] });
         syncZoomLevel();
@@ -602,11 +742,11 @@ export function buildViewerChromeRuntime(): string {
           root.hidden = true;
           root.setAttribute("role", "dialog");
           root.setAttribute("aria-modal", "true");
-          root.setAttribute("aria-label", "Image viewer");
+          root.setAttribute("aria-label", t("lightbox.label"));
 
-          closeButton = createButton("lightbox-close", "Close (Esc)", ${icon("close", 20, 2.2)}, close);
-          prevButton = createButton("lightbox-nav lightbox-prev", "Previous (←)", ${icon("chevronLeft", 24, 2.2)}, () => step(-1));
-          nextButton = createButton("lightbox-nav lightbox-next", "Next (→)", ${icon("chevronRight", 24, 2.2)}, () => step(1));
+          closeButton = createButton("lightbox-close", t("lightbox.close"), ${icon("close", 20, 2.2)}, close);
+          prevButton = createButton("lightbox-nav lightbox-prev", t("lightbox.previous"), ${icon("chevronLeft", 24, 2.2)}, () => step(-1));
+          nextButton = createButton("lightbox-nav lightbox-next", t("lightbox.next"), ${icon("chevronRight", 24, 2.2)}, () => step(1));
           counter = document.createElement("div");
           counter.className = "lightbox-counter";
 
@@ -617,17 +757,63 @@ export function buildViewerChromeRuntime(): string {
           image.alt = "";
           image.draggable = false;
           stage.appendChild(image);
+          const touches = new Map();
+          let gesture = null;
+          const readGesture = () => {
+            const points = Array.from(touches.values());
+            if (points.length >= 2) return { distance: Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)), scale };
+            return points.length === 1 ? { startX: points[0].x, startY: points[0].y, lastX: points[0].x, lastY: points[0].y, scale } : null;
+          };
+          stage.addEventListener("pointerdown", (event) => {
+            if (event.pointerType !== "touch") return;
+            touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            gesture = readGesture();
+          });
+          stage.addEventListener("pointermove", (event) => {
+            if (event.pointerType !== "touch" || !touches.has(event.pointerId)) return;
+            touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            if (!gesture) return;
+            if (touches.size >= 2 && gesture.distance) {
+              const points = Array.from(touches.values());
+              const distance = Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y));
+              scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, gesture.scale * distance / gesture.distance));
+              if (scale === MIN_SCALE) {
+                posX = 0;
+                posY = 0;
+              }
+              applyTransform();
+            } else if (touches.size === 1 && scale > 1 && gesture.lastX !== undefined) {
+              posX += event.clientX - gesture.lastX;
+              posY += event.clientY - gesture.lastY;
+              gesture.lastX = event.clientX;
+              gesture.lastY = event.clientY;
+              applyTransform();
+            }
+          });
+          const releaseTouch = (event) => {
+            if (event.pointerType !== "touch" || !touches.has(event.pointerId)) return;
+            const single = touches.size === 1 && gesture && gesture.startX !== undefined;
+            if (single && scale <= 1) {
+              const dx = event.clientX - gesture.startX;
+              const dy = event.clientY - gesture.startY;
+              if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+            }
+            touches.delete(event.pointerId);
+            gesture = readGesture();
+          };
+          stage.addEventListener("pointerup", releaseTouch);
+          stage.addEventListener("pointercancel", releaseTouch);
 
           const toolbar = document.createElement("div");
           toolbar.className = "lightbox-toolbar";
-          zoomOutButton = createButton("lightbox-button", "Zoom out (−)", ${icon("minus", 18, 2.2)}, () => zoom(-SCALE_STEP));
+          zoomOutButton = createButton("lightbox-button", t("lightbox.zoomOut"), ${icon("minus", 18, 2.2)}, () => zoom(-SCALE_STEP));
           zoomLabel = document.createElement("span");
           zoomLabel.className = "lightbox-zoom-label";
-          zoomInButton = createButton("lightbox-button", "Zoom in (+)", ${icon("plus", 18, 2.2)}, () => zoom(SCALE_STEP));
-          resetButton = createButton("lightbox-button", "Reset zoom (0)", ${icon("fit", 18)}, resetView);
+          zoomInButton = createButton("lightbox-button", t("lightbox.zoomIn"), ${icon("plus", 18, 2.2)}, () => zoom(SCALE_STEP));
+          resetButton = createButton("lightbox-button", t("lightbox.reset"), ${icon("fit", 18)}, resetView);
           originalLink = document.createElement("a");
           originalLink.className = "lightbox-button";
-          originalLink.title = "Open original in a new tab";
+          originalLink.title = t("lightbox.original");
           originalLink.setAttribute("aria-label", originalLink.title);
           originalLink.target = "_blank";
           originalLink.rel = "noopener noreferrer";
@@ -660,7 +846,7 @@ export function buildViewerChromeRuntime(): string {
             }
           });
           image.addEventListener("pointerdown", (event) => {
-            if (scale <= 1 || event.button !== 0) return;
+            if (scale <= 1 || event.button !== 0 || event.pointerType === "touch") return;
             event.preventDefault();
             drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: posX, originY: posY };
             image.setPointerCapture(event.pointerId);
@@ -814,6 +1000,329 @@ export function buildViewerChromeRuntime(): string {
         return { open, close };
       })();
       window.openImageViewer = lightbox.open;
+
+      function readNodeCanvasRect(node) {
+        return {
+          left: parseFloat(node.style.left) || 0,
+          top: parseFloat(node.style.top) || 0,
+          width: parseFloat(node.style.width) || node.offsetWidth || 1,
+          height: parseFloat(node.style.height) || node.offsetHeight || 1,
+        };
+      }
+
+      function fitCanvasRect(rect, maxScale, behavior) {
+        cancelZoomAreaDrag();
+        const padding = 40;
+        const viewportRect = viewport.getBoundingClientRect();
+        const topInset = toolbar ? Math.max(0, toolbar.getBoundingClientRect().bottom - viewportRect.top) : 0;
+        const bottomInset = presentBar && !presentBar.hidden ? presentBar.offsetHeight + 28 : 0;
+        const availableWidth = Math.max(100, viewport.clientWidth - padding * 2);
+        const availableHeight = Math.max(100, viewport.clientHeight - topInset - bottomInset - padding * 2);
+        currentScale = clamp(Math.min(availableWidth / Math.max(1, rect.width), availableHeight / Math.max(1, rect.height), maxScale), 0.2, 4);
+        setCssProps(canvas, { transform: "scale(" + currentScale + ")" });
+        drawEdges();
+        const canvasRect = canvas.getBoundingClientRect();
+        const canvasLeft = canvasRect.left - viewportRect.left + viewport.scrollLeft;
+        const canvasTop = canvasRect.top - viewportRect.top + viewport.scrollTop;
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        viewport.scrollTo({
+          left: Math.max(0, canvasLeft + centerX * currentScale - viewport.clientWidth / 2),
+          top: Math.max(0, canvasTop + centerY * currentScale - (viewport.clientHeight + topInset - bottomInset) / 2),
+          behavior: behavior || "auto",
+        });
+        window.requestAnimationFrame(updateMinimapViewport);
+      }
+
+      function flashNode(node) {
+        node.classList.remove("cx-flash");
+        void node.offsetWidth;
+        node.classList.add("cx-flash");
+        window.setTimeout(() => node.classList.remove("cx-flash"), 1700);
+      }
+
+      function announceNode(id, source) {
+        window.dispatchEvent(new CustomEvent("canvas-viewer:focus-node", { detail: { id, source } }));
+      }
+
+      function findNodeById(id) {
+        return Array.from(canvas.querySelectorAll(".node[data-node-id]")).find((node) => node.getAttribute("data-node-id") === id) || null;
+      }
+
+      function readingOrder(nodes) {
+        const entries = nodes
+          .map((node, order) => ({ node, order, rect: readNodeCanvasRect(node) }))
+          .sort((a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left || a.order - b.order);
+        const rows = [];
+        entries.forEach((entry) => {
+          const row = rows[rows.length - 1];
+          if (row && entry.rect.top - row.top < 120) row.items.push(entry);
+          else rows.push({ top: entry.rect.top, items: [entry] });
+        });
+        return rows.flatMap((row) => row.items.sort((a, b) => a.rect.left - b.rect.left || a.order - b.order)).map((entry) => entry.node);
+      }
+
+      let toastElement = null;
+      let toastTimer = 0;
+      function showToast(message) {
+        if (!toastElement) {
+          toastElement = document.createElement("div");
+          toastElement.className = "cx-toast cx-glass";
+          toastElement.setAttribute("role", "status");
+          document.body.appendChild(toastElement);
+        }
+        toastElement.textContent = message;
+        toastElement.hidden = false;
+        toastElement.classList.remove("is-visible");
+        void toastElement.offsetWidth;
+        toastElement.classList.add("is-visible");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+          toastElement.classList.remove("is-visible");
+        }, 1800);
+      }
+
+      async function copyText(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          const area = document.createElement("textarea");
+          area.value = text;
+          area.setAttribute("readonly", "");
+          area.style.position = "fixed";
+          area.style.opacity = "0";
+          document.body.appendChild(area);
+          area.select();
+          let copied = false;
+          try {
+            copied = document.execCommand("copy");
+          } catch {
+            copied = false;
+          }
+          area.remove();
+          return copied;
+        }
+      }
+
+      canvas.querySelectorAll(".node[data-node-id]").forEach((node) => {
+        const id = node.getAttribute("data-node-id") || "";
+        if (!id || groupNodeIds.has(id)) return;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "cx-node-link";
+        button.title = t("node.copyLink");
+        button.setAttribute("aria-label", t("node.copyLink"));
+        button.innerHTML = ${icon("link", 15)};
+        button.addEventListener("click", async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const url = location.href.split("#")[0] + "#card=" + encodeURIComponent(id);
+          if (await copyText(url)) showToast(t("node.linkCopied"));
+          else window.prompt(t("node.copyLink"), url);
+        });
+        node.appendChild(button);
+      });
+
+      function openCardFromHash(behavior) {
+        const match = /^#card=([^&]+)/.exec(location.hash || "");
+        if (!match) return;
+        let id = "";
+        try {
+          id = decodeURIComponent(match[1]);
+        } catch {
+          return;
+        }
+        const node = findNodeById(id);
+        if (!node) return;
+        fitCanvasRect(readNodeCanvasRect(node), 1.4, behavior);
+        flashNode(node);
+        window.setTimeout(() => announceNode(id, "link"), behavior === "smooth" ? 500 : 120);
+      }
+      window.addEventListener("hashchange", () => openCardFromHash("smooth"));
+      window.requestAnimationFrame(() => openCardFromHash("auto"));
+
+      const presentButton = document.getElementById("present-toolbar-button");
+      let presentBar = null;
+      let presentCounter = null;
+      let presentPrev = null;
+      let presentNext = null;
+      let presentOrder = [];
+      let presentIndex = -1;
+
+      function buildPresentationOrder() {
+        const nodes = Array.from(canvas.querySelectorAll(".node[data-node-id]")).filter((node) => {
+          const id = node.getAttribute("data-node-id") || "";
+          return id && !groupNodeIds.has(id) && !hiddenNodeIds.has(id) && node.getClientRects().length > 0;
+        });
+        const byId = new Map(nodes.map((node) => [node.getAttribute("data-node-id"), node]));
+        const reading = readingOrder(nodes);
+        const rank = new Map(reading.map((node, index) => [node.getAttribute("data-node-id"), index]));
+        const outgoing = new Map();
+        const incoming = new Set();
+        edges.forEach((edge) => {
+          if (!byId.has(edge.fromId) || !byId.has(edge.toId) || edge.fromId === edge.toId) return;
+          if (!outgoing.has(edge.fromId)) outgoing.set(edge.fromId, []);
+          outgoing.get(edge.fromId).push(edge.toId);
+          incoming.add(edge.toId);
+        });
+        const visited = new Set();
+        const order = [];
+        const stack = [];
+        const pushChildren = (id) => {
+          const children = (outgoing.get(id) || []).slice().sort((a, b) => rank.get(b) - rank.get(a));
+          children.forEach((child) => stack.push(child));
+        };
+        const visitFrom = (startId) => {
+          stack.push(startId);
+          while (stack.length) {
+            const id = stack.pop();
+            if (visited.has(id)) continue;
+            visited.add(id);
+            order.push(byId.get(id));
+            pushChildren(id);
+          }
+        };
+        reading.filter((node) => !incoming.has(node.getAttribute("data-node-id"))).forEach((node) => visitFrom(node.getAttribute("data-node-id")));
+        reading.forEach((node) => visitFrom(node.getAttribute("data-node-id")));
+        return order;
+      }
+
+      function createPresentButton(title, iconHtml, onClick) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.title = title;
+        button.setAttribute("aria-label", title);
+        button.innerHTML = iconHtml;
+        button.addEventListener("click", onClick);
+        return button;
+      }
+
+      function ensurePresentBar() {
+        if (presentBar) return;
+        presentBar = document.createElement("div");
+        presentBar.className = "present-bar cx-glass";
+        presentBar.hidden = true;
+        presentPrev = createPresentButton(t("present.previous"), ${icon("chevronLeft", 18, 2.2)}, () => showSlide(presentIndex - 1));
+        presentNext = createPresentButton(t("present.next"), ${icon("chevronRight", 18, 2.2)}, () => showSlide(presentIndex + 1));
+        presentCounter = document.createElement("span");
+        presentCounter.className = "present-counter";
+        const divider = document.createElement("span");
+        divider.className = "zoom-pill-divider";
+        const exit = createPresentButton(t("present.exit"), ${icon("close", 16, 2.2)}, stopPresentation);
+        presentBar.append(presentPrev, presentCounter, presentNext, divider, exit);
+        (canvasShell || document.body).appendChild(presentBar);
+      }
+
+      function showSlide(index) {
+        if (!presentOrder.length) return;
+        presentIndex = clamp(index, 0, presentOrder.length - 1);
+        const node = presentOrder[presentIndex];
+        canvas.querySelectorAll(".node.is-presenting").forEach((item) => item.classList.remove("is-presenting"));
+        node.classList.add("is-presenting");
+        presentCounter.textContent = t("present.counter", { index: presentIndex + 1, total: presentOrder.length });
+        presentPrev.disabled = presentIndex === 0;
+        presentNext.disabled = presentIndex === presentOrder.length - 1;
+        fitCanvasRect(readNodeCanvasRect(node), 1.6, "smooth");
+        window.setTimeout(() => announceNode(node.getAttribute("data-node-id"), "presentation"), 450);
+      }
+
+      function startPresentation() {
+        presentOrder = buildPresentationOrder();
+        if (!presentOrder.length) return;
+        ensurePresentBar();
+        document.body.classList.add("cx-presenting");
+        presentBar.hidden = false;
+        if (presentButton) presentButton.classList.add("is-active");
+        showSlide(0);
+      }
+
+      function stopPresentation() {
+        if (!document.body.classList.contains("cx-presenting")) return;
+        document.body.classList.remove("cx-presenting");
+        canvas.querySelectorAll(".node.is-presenting").forEach((item) => item.classList.remove("is-presenting"));
+        if (presentBar) presentBar.hidden = true;
+        if (presentButton) presentButton.classList.remove("is-active");
+        presentIndex = -1;
+        window.dispatchEvent(new CustomEvent("canvas-viewer:presentation-end"));
+        window.resetZoom();
+      }
+
+      window.togglePresentation = function() {
+        if (document.body.classList.contains("cx-presenting")) stopPresentation();
+        else startPresentation();
+      };
+
+      window.addEventListener("keydown", (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+        if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
+        const presenting = document.body.classList.contains("cx-presenting");
+        if (presenting) {
+          if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+            event.preventDefault();
+            showSlide(presentIndex + 1);
+          } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+            event.preventDefault();
+            showSlide(presentIndex - 1);
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            showSlide(0);
+          } else if (event.key === "End") {
+            event.preventDefault();
+            showSlide(presentOrder.length - 1);
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            stopPresentation();
+          }
+          return;
+        }
+        if ((event.key === "p" || event.key === "P" || event.key === "з" || event.key === "З") && presentButton) {
+          event.preventDefault();
+          startPresentation();
+        }
+      });
+
+      const touchPoints = new Map();
+      let pinchState = null;
+      function readPinch() {
+        const points = Array.from(touchPoints.values());
+        if (points.length < 2) return null;
+        const [a, b] = points;
+        return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) };
+      }
+      viewport.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch") return;
+        touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        pinchState = readPinch();
+      });
+      viewport.addEventListener("pointermove", (event) => {
+        if (event.pointerType !== "touch" || !touchPoints.has(event.pointerId)) return;
+        const previous = touchPoints.get(event.pointerId);
+        touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (touchPoints.size === 1) {
+          viewport.scrollLeft -= event.clientX - previous.x;
+          viewport.scrollTop -= event.clientY - previous.y;
+          updateMinimapViewport();
+          return;
+        }
+        const next = readPinch();
+        if (!next || !pinchState) {
+          pinchState = next;
+          return;
+        }
+        zoomAtPoint(next.x, next.y, next.distance / pinchState.distance);
+        viewport.scrollLeft -= next.x - pinchState.x;
+        viewport.scrollTop -= next.y - pinchState.y;
+        pinchState = next;
+      });
+      const releaseTouch = (event) => {
+        if (event.pointerType !== "touch") return;
+        touchPoints.delete(event.pointerId);
+        pinchState = readPinch();
+      };
+      viewport.addEventListener("pointerup", releaseTouch);
+      viewport.addEventListener("pointercancel", releaseTouch);
 
       viewport.addEventListener("click", (event) => {
         const target = event.target instanceof Element ? event.target : null;

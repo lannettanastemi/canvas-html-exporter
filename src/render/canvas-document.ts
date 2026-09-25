@@ -8,8 +8,13 @@ import { buildSearchEntry, renderGroupTitle, renderMinimapNode, renderNode } fro
 import { buildCalloutCss, buildCanvasColorVariables, buildCanvasEdgeColorMap, buildHeadingColorCss, buildInlineStyleCss, getTheme } from "./theme";
 import type { CanvasData, ExportOptions } from "./types";
 import { buildViewerChromeStyles, viewerIcon } from "./viewer-chrome";
+import { getUiLanguage, t, withUiLanguage } from "./i18n";
 
 export async function convertCanvasToHtml(data: CanvasData, options: ExportOptions): Promise<string> {
+  return withUiLanguage(options.language, () => renderCanvasDocument(data, options));
+}
+
+async function renderCanvasDocument(data: CanvasData, options: ExportOptions): Promise<string> {
   const nodes = Array.isArray(data.nodes) ? data.nodes : [];
   const edges = Array.isArray(data.edges) ? data.edges : [];
   const showMinimap = options.showMinimap !== false;
@@ -27,11 +32,11 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
     .map((node) => node.id);
   const contentNodeCount = nodes.length - groupNodeIds.length;
   const canvasCountSummary = [
-    `${contentNodeCount} ${contentNodeCount === 1 ? "node" : "nodes"}`,
+    t("count.node", { n: contentNodeCount }),
     ...(groupNodeIds.length > 0
-      ? [`${groupNodeIds.length} ${groupNodeIds.length === 1 ? "group" : "groups"}`]
+      ? [t("count.group", { n: groupNodeIds.length })]
       : []),
-    `${edges.length} ${edges.length === 1 ? "connection" : "connections"}`,
+    t("count.connection", { n: edges.length }),
   ].join(" · ");
 
   const bounds = getBounds(nodes);
@@ -43,7 +48,7 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
   const hasLevelView = foldingGraph.maxLevel > 0;
   const foldingLevelOptions = Array.from(
     { length: foldingGraph.maxLevel + 1 },
-    (_, level) => `<option value="${level}">Level ${level}</option>`,
+    (_, level) => `<option value="${level}">${t("folding.level", { n: level })}</option>`,
   ).join("");
   const theme = getTheme(options.darkMode);
   const edgePaletteColors = buildCanvasEdgeColorMap(options.canvasColors);
@@ -99,29 +104,30 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
     .map((node) => buildSearchEntry(node, bounds.offsetX, bounds.offsetY))
     .filter((entry) => entry.text);
 
-  const foldingMenuHtml = hasFoldingControls ? `<details id="folding-menu" class="toolbar-menu"><summary class="toolbar-icon" title="Folding" aria-label="Folding">${viewerIcon("folding", 18)}</summary><div class="toolbar-menu-content">
-      <button id="folding-mode-button" type="button" onclick="toggleFoldingMode()" aria-pressed="${String(!foldingInitiallyEnabled)}">${foldingInitiallyEnabled ? "No folding" : "Enable folding"}</button>
-      <button id="folding-controls-visibility-button" class="folding-action-control" type="button" onclick="toggleFoldingControlsVisibility()" aria-pressed="${String(foldingInitiallyEnabled)}"${foldingInitiallyEnabled ? "" : " hidden"}>Hide folding controls</button>
-      <button id="folding-expand-all-button" class="folding-action-control" type="button" onclick="expandAllBranches()"${foldingInitiallyEnabled ? "" : " hidden"}>Expand all</button>
-      ${hasRootedBranches ? `<button id="folding-collapse-all-button" class="folding-action-control" type="button" onclick="collapseAllBranches()"${foldingInitiallyEnabled ? "" : " hidden"}>Collapse all</button>` : ""}
-      ${hasLevelView ? `<select id="folding-level-select" class="folding-action-control" aria-label="Visible canvas levels" title="Visible canvas levels" onchange="setVisibleLevel(this.value)"${foldingInitiallyEnabled ? "" : " hidden"}><option value="all">All levels</option>${foldingLevelOptions}</select>` : ""}
-      <button id="folding-toolbar-button" type="button" onclick="restoreImportedFolding()">Restore folding</button>
+  const foldingMenuHtml = hasFoldingControls ? `<details id="folding-menu" class="toolbar-menu"><summary class="toolbar-icon" title="${t("toolbar.folding")}" aria-label="${t("toolbar.folding")}">${viewerIcon("folding", 18)}</summary><div class="toolbar-menu-content">
+      <button id="folding-mode-button" type="button" onclick="toggleFoldingMode()" aria-pressed="${String(!foldingInitiallyEnabled)}">${foldingInitiallyEnabled ? t("folding.noFolding") : t("folding.enable")}</button>
+      <button id="folding-controls-visibility-button" class="folding-action-control" type="button" onclick="toggleFoldingControlsVisibility()" aria-pressed="${String(foldingInitiallyEnabled)}"${foldingInitiallyEnabled ? "" : " hidden"}>${t("folding.hideControls")}</button>
+      <button id="folding-expand-all-button" class="folding-action-control" type="button" onclick="expandAllBranches()"${foldingInitiallyEnabled ? "" : " hidden"}>${t("folding.expandAll")}</button>
+      ${hasRootedBranches ? `<button id="folding-collapse-all-button" class="folding-action-control" type="button" onclick="collapseAllBranches()"${foldingInitiallyEnabled ? "" : " hidden"}>${t("folding.collapseAll")}</button>` : ""}
+      ${hasLevelView ? `<select id="folding-level-select" class="folding-action-control" aria-label="${t("folding.levels")}" title="${t("folding.levels")}" onchange="setVisibleLevel(this.value)"${foldingInitiallyEnabled ? "" : " hidden"}><option value="all">${t("folding.allLevels")}</option>${foldingLevelOptions}</select>` : ""}
+      <button id="folding-toolbar-button" type="button" onclick="restoreImportedFolding()">${t("folding.restore")}</button>
       <hr class="folding-menu-separator folding-action-control"${foldingInitiallyEnabled ? "" : " hidden"}>
-      <button id="focus-controls-visibility-button" class="folding-action-control" type="button" onclick="toggleFocusControlsVisibility()" aria-pressed="${String(foldingInitiallyEnabled)}"${foldingInitiallyEnabled ? "" : " hidden"}>Hide focus controls</button>
-      <button id="folding-focus-exit-button" class="folding-action-control" type="button" onclick="exitBranchFocus()" disabled${foldingInitiallyEnabled ? "" : " hidden"}>Exit focus</button>
+      <button id="focus-controls-visibility-button" class="folding-action-control" type="button" onclick="toggleFocusControlsVisibility()" aria-pressed="${String(foldingInitiallyEnabled)}"${foldingInitiallyEnabled ? "" : " hidden"}>${t("folding.hideFocus")}</button>
+      <button id="folding-focus-exit-button" class="folding-action-control" type="button" onclick="exitBranchFocus()" disabled${foldingInitiallyEnabled ? "" : " hidden"}>${t("folding.exitFocus")}</button>
     </div></details>` : "";
   const toolbarActionsHtml = [
     foldingMenuHtml,
-    showMinimap ? `<button id="minimap-toolbar-button" type="button" onclick="toggleMinimap()" title="Minimap" aria-label="Minimap">${viewerIcon("minimap", 18)}</button>` : "",
-    showSearch ? `<button id="search-toolbar-button" type="button" onclick="openSearch()" title="Search (/)" aria-label="Search">${viewerIcon("search", 18)}</button>` : "",
+    contentNodeCount > 1 ? `<button id="present-toolbar-button" type="button" onclick="togglePresentation()" title="${t("toolbar.presentHint")}" aria-label="${t("toolbar.present")}">${viewerIcon("play", 17)}</button>` : "",
+    showMinimap ? `<button id="minimap-toolbar-button" type="button" onclick="toggleMinimap()" title="${t("toolbar.minimap")}" aria-label="${t("toolbar.minimap")}">${viewerIcon("minimap", 18)}</button>` : "",
+    showSearch ? `<button id="search-toolbar-button" type="button" onclick="openSearch()" title="${t("toolbar.searchHint")}" aria-label="${t("toolbar.search")}">${viewerIcon("search", 18)}</button>` : "",
   ].filter(Boolean).join("\n    ");
 
   const canvasColorVars = buildCanvasColorVariables(options.canvasColors);
   const minimapHtml = showMinimap
-    ? `<aside id="minimap-panel" class="minimap" aria-label="Canvas minimap" hidden>
-    <div id="minimap-drag-handle" class="minimap-header" title="Move minimap">
+    ? `<aside id="minimap-panel" class="minimap" aria-label="${t("minimap.label")}" hidden>
+    <div id="minimap-drag-handle" class="minimap-header" title="${t("minimap.move")}">
       <div class="minimap-header-copy">
-        <strong>Minimap</strong>
+        <strong>${t("toolbar.minimap")}</strong>
       </div>
     </div>
     <svg id="minimap-svg" viewBox="0 0 ${bounds.width} ${bounds.height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
@@ -135,11 +141,11 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
     ? `<div id="search-overlay" class="search-overlay" hidden>
     <div class="search-panel" role="dialog" aria-modal="true" aria-labelledby="search-title">
       <div class="search-panel-header">
-        <strong id="search-title">Search</strong>
-        <button id="search-close-button" type="button" class="search-close-button" aria-label="Close search">Close</button>
+        <strong id="search-title">${t("search.title")}</strong>
+        <button id="search-close-button" type="button" class="search-close-button" aria-label="${t("search.closeLabel")}">${t("search.close")}</button>
       </div>
-      <input id="search-input" class="search-input" type="search" aria-label="Search canvas" placeholder="Enter a search term" autocomplete="off">
-      <div id="search-summary" class="search-summary">Enter a search term to find matching nodes.</div>
+      <input id="search-input" class="search-input" type="search" aria-label="${t("search.inputLabel")}" placeholder="${t("search.placeholder")}" autocomplete="off">
+      <div id="search-summary" class="search-summary">${t("search.empty")}</div>
       <ul id="search-results" class="search-results"></ul>
     </div>
   </div>`
@@ -147,7 +153,7 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
   const embeddedPagesHtml = exportFormat === "single-html" && embeddedPages.length
     ? `<section id="single-page-view" class="single-page-view" hidden>
     <div class="single-page-toolbar">
-      <a id="single-page-canvas-link" class="single-page-canvas-link" href="#">Canvas</a>
+      <a id="single-page-canvas-link" class="single-page-canvas-link" href="#">${t("page.canvas")}</a>
     </div>
     <main id="single-page-body" class="single-page-body"></main>
   </section>
@@ -157,7 +163,7 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
     : "";
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${getUiLanguage()}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -182,19 +188,19 @@ export async function convertCanvasToHtml(data: CanvasData, options: ExportOptio
   </div>
   <div class="viewport">
     <div id="zoom-area-selection" class="zoom-area-selection" hidden></div>
-    <div id="zoom-area-hint" class="zoom-area-hint" role="status" hidden>Release to zoom · Esc to cancel</div>
+    <div id="zoom-area-hint" class="zoom-area-hint" role="status" hidden>${t("zoom.areaHint")}</div>
     <div id="canvas">
       <svg id="edge-layer"></svg>
       ${nodeHtml}
       ${groupTitleHtml}
     </div>
   </div>
-  <div class="zoom-pill cx-glass" role="group" aria-label="Zoom">
-    <button type="button" onclick="zoomBy(1 / 1.15)" title="Zoom out (Ctrl −)" aria-label="Zoom out">${viewerIcon("minus", 16, 2.2)}</button>
-    <button id="zoom-level" class="zoom-pill-level" type="button" onclick="resetZoom()" title="Fit to screen (Ctrl 0)">100%</button>
-    <button type="button" onclick="zoomBy(1.15)" title="Zoom in (Ctrl +)" aria-label="Zoom in">${viewerIcon("plus", 16, 2.2)}</button>
+  <div class="zoom-pill cx-glass" role="group" aria-label="${t("zoom.group")}">
+    <button type="button" onclick="zoomBy(1 / 1.15)" title="${t("zoom.outHint")}" aria-label="${t("zoom.out")}">${viewerIcon("minus", 16, 2.2)}</button>
+    <button id="zoom-level" class="zoom-pill-level" type="button" onclick="resetZoom()" title="${t("zoom.fitHint")}">100%</button>
+    <button type="button" onclick="zoomBy(1.15)" title="${t("zoom.inHint")}" aria-label="${t("zoom.in")}">${viewerIcon("plus", 16, 2.2)}</button>
     <span class="zoom-pill-divider" aria-hidden="true"></span>
-    <button type="button" onclick="resetZoom()" title="Fit to screen (Ctrl 0)" aria-label="Fit to screen">${viewerIcon("fit", 16)}</button>
+    <button type="button" onclick="resetZoom()" title="${t("zoom.fitHint")}" aria-label="${t("zoom.fit")}">${viewerIcon("fit", 16)}</button>
   </div>
   ${minimapHtml}
   ${searchHtml}

@@ -748,7 +748,7 @@ function createMockApp(initialFiles: Array<{ path: string; text?: string; binary
     assert.match(mainHtml, /<img src="\.\.\/images\/\d+_picture\.png" alt="Skizze">/);
   });
 
-  await test("exports link nodes with local wrapper page and preview target", async () => {
+  await test("exports web link nodes without a wrapper page", async () => {
     const canvasJson = JSON.stringify({
       name: "Link Export",
       nodes: [
@@ -779,22 +779,10 @@ function createMockApp(initialFiles: Array<{ path: string; text?: string; binary
     const linkNode = result.data.nodes.find((node) => node.id === "link");
     assert.ok(linkNode);
     assert.equal(linkNode?.displayName, "https://openai.com/index/");
-    assert.ok(linkNode?.exportHtmlPath?.startsWith("assets/files/"));
-    assert.ok(linkNode?.canvasHref?.startsWith("assets/files/"));
+    assert.equal(linkNode?.exportHtmlPath, undefined);
+    assert.equal(linkNode?.canvasHref, "https://openai.com/index/");
     assert.equal(linkNode?.url, "https://openai.com/index/");
-
-    const exportedLinkPage = files.get(`Canvas-Exports/link/${linkNode?.exportHtmlPath || ""}`);
-    assert.ok(exportedLinkPage);
-    const linkHtml = exportedLinkPage?.text || "";
-    assert.match(linkHtml, /<a class="link-page-canvas-link" href="\.\.\/\.\.\/index\.html">Canvas<\/a>/);
-    assert.match(linkHtml, /No internet connection is available\./);
-    assert.match(linkHtml, /This website may not allow embedded previews\. Use the link above\./);
-    assert.match(linkHtml, /Use the link above if the website blocks embedding or if you want to open the page in its own browser tab\./);
-    assert.match(linkHtml, /<a class="link-page-title" href="https:\/\/openai\.com\/index\/"/);
-    assert.doesNotMatch(linkHtml, /link-page-back/);
-    assert.doesNotMatch(linkHtml, /class="link-page-action"/);
-    assert.match(linkHtml, /<iframe id="link-preview-frame" src="https:\/\/openai\.com\/index\/" title="https:\/\/openai\.com\/index\/" loading="lazy"><\/iframe>/);
-    assert.match(linkHtml, /window\.setTimeout\(\(\) => \{/);
+    assert.ok(![...files.keys()].some((key) => key.startsWith("Canvas-Exports/link/assets/files/")), "no wrapper page is written");
   });
 
   await test("keeps shiki highlighting in exported markdown html pages", async () => {
@@ -913,7 +901,7 @@ function createMockApp(initialFiles: Array<{ path: string; text?: string; binary
     assert.ok(markdownNode?.exportHtmlPath?.startsWith("#page-"));
     assert.ok(markdownNode?.canvasHref?.startsWith("#page-"));
     assert.match(markdownNode?.previewHtml || "", /<img src="data:image\/png;base64,/);
-    assert.ok(linkNode?.canvasHref?.startsWith("#page-"));
+    assert.equal(linkNode?.canvasHref, "https://pandoc.org/");
     assert.equal(files.has("Canvas-Exports/single/assets/files/001_main.html"), false);
     assert.equal(files.has("Canvas-Exports/single/assets/images/"), false);
     assert.ok(result.options.embeddedPages?.some((page) => page.id === markdownNode?.canvasHref?.replace(/^#page-/, "")));

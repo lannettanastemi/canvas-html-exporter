@@ -217,7 +217,7 @@ export function buildBrowserPages(): string {
         applySearchHighlights(singlePageBody, parsePageSearchQuery(window.location.hash));
         canvasShell.hidden = true;
         singlePageView.hidden = false;
-        document.title = (template.dataset.pageTitle || "Page") + " - " + baseDocumentTitle;
+        document.title = (template.dataset.pageTitle || t("page.fallbackTitle")) + " - " + baseDocumentTitle;
         window.scrollTo({ top: 0, behavior: "auto" });
         const anchor = parsePageAnchorHash(window.location.hash);
         if (anchor) {

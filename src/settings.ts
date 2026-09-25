@@ -7,6 +7,7 @@ import {
 } from "./folding/types";
 import { isAbsoluteFilesystemPath, isMobileRuntime } from "./helpers/desktop-paths";
 import { normalizeStoredOutputPath, openVaultFolderPicker, pickFolderPath } from "./path-pickers";
+import { normalizeUiLanguage, UI_LANGUAGE_LABELS, type UiLanguage } from "./render/i18n";
 
 export type ExportFormatChoice = "package" | "single-html";
 
@@ -18,6 +19,8 @@ export type PluginSettings = {
   highlightingTheme: HighlightingThemeChoice;
   showMinimap: boolean;
   showSearch: boolean;
+  language: UiLanguage;
+  publishRepoPath: string;
 };
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -28,6 +31,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   highlightingTheme: "shiki",
   showMinimap: true,
   showSearch: true,
+  language: "ru",
+  publishRepoPath: "",
 };
 
 const EXPORT_FORMAT_LABELS: Record<ExportFormatChoice, string> = {
@@ -74,14 +79,14 @@ export function normalizePluginSettings(saved: unknown): PluginSettings {
     highlightingTheme: VALID_HIGHLIGHTING_THEMES.has(highlightingTheme) ? highlightingTheme : DEFAULT_SETTINGS.highlightingTheme,
     showMinimap: typeof data.showMinimap === "boolean" ? data.showMinimap : DEFAULT_SETTINGS.showMinimap,
     showSearch: typeof data.showSearch === "boolean" ? data.showSearch : DEFAULT_SETTINGS.showSearch,
+    language: data.language === "en" || data.language === "ru" ? data.language : DEFAULT_SETTINGS.language,
+    publishRepoPath: typeof data.publishRepoPath === "string" ? data.publishRepoPath.trim() : DEFAULT_SETTINGS.publishRepoPath,
   };
 }
 
 type SettingsHost = Plugin & {
   settings: PluginSettings;
   saveSettings(): Promise<void>;
-  showLastUpdate(): void;
-  showReadme(): void;
 };
 
 type PluginSettingKey = keyof PluginSettings;
@@ -150,6 +155,17 @@ export class CanvasHtmlExporterSettingTab extends PluginSettingTab {
         heading: "Exported page",
         items: [
           {
+            name: "Interface language",
+            desc: "Language of buttons, hints and counters in the exported page.",
+            aliases: ["language", "язык", "locale"],
+            control: {
+              type: "dropdown",
+              key: "language",
+              defaultValue: DEFAULT_SETTINGS.language,
+              options: UI_LANGUAGE_LABELS,
+            },
+          },
+          {
             name: "Dark default theme",
             desc: "Use a dark layout by default for exported pages.",
             aliases: ["appearance", "color scheme"],
@@ -203,34 +219,6 @@ export class CanvasHtmlExporterSettingTab extends PluginSettingTab {
           },
         ],
       },
-      {
-        type: "group",
-        heading: "About",
-        items: [
-          {
-            name: "Last update",
-            desc: `Review the features and usage notes for version ${this.plugin.manifest.version}.`,
-            render: (setting) => {
-              setting.addButton((button) => {
-                button
-                  .setButtonText("Show last update")
-                  .onClick(() => this.plugin.showLastUpdate());
-              });
-            },
-          },
-          {
-            name: "README",
-            desc: "Open the complete plugin documentation without leaving Obsidian.",
-            render: (setting) => {
-              setting.addButton((button) => {
-                button
-                  .setButtonText("Show readme")
-                  .onClick(() => this.plugin.showReadme());
-              });
-            },
-          },
-        ],
-      },
     ];
   }
 
@@ -259,6 +247,14 @@ export class CanvasHtmlExporterSettingTab extends PluginSettingTab {
         this.plugin.settings.highlightingTheme = VALID_HIGHLIGHTING_THEMES.has(selected)
           ? selected
           : DEFAULT_SETTINGS.highlightingTheme;
+        break;
+      }
+      case "language": {
+        this.plugin.settings.language = normalizeUiLanguage(value);
+        break;
+      }
+      case "publishRepoPath": {
+        this.plugin.settings.publishRepoPath = typeof value === "string" ? value.trim() : "";
         break;
       }
       case "foldingInitialState": {
