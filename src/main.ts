@@ -8,6 +8,7 @@ import { resolveInitialCanvasFoldState } from "./integrations/canvas-folding";
 import { buildStoredPluginData, readPluginData } from "./plugin-data";
 import { collectCanvasColorKeys } from "./export/canvas-data";
 import { createLinkProber } from "./integrations/link-probe";
+import { runNotedPublish, type NotedPublishReport } from "./integrations/noted-publish";
 
 type CanvasColorMap = Record<string, string>;
 type CalloutColorMap = Record<string, string>;
@@ -26,6 +27,7 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
   settings: PluginSettings = DEFAULT_SETTINGS;
   private disposed = false;
   private exportInProgress = false;
+  private publishInProgress = false;
   private saveQueue: Promise<void> = Promise.resolve();
 
   async onload(): Promise<void> {
@@ -45,6 +47,18 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
       },
     });
 
+    this.addRibbonIcon("upload-cloud", "Опубликовать на сайт", () => {
+      void this.publishCurrentCanvasToNoted();
+    });
+
+    this.addCommand({
+      id: "publish-to-noted",
+      name: "Опубликовать на сайт",
+      callback: () => {
+        void this.publishCurrentCanvasToNoted();
+      },
+    });
+
     this.addSettingTab(new CanvasHtmlExporterSettingTab(this.app, this));
   }
 
@@ -53,15 +67,87 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
   }
 
   async exportCurrentCanvas(): Promise<void> {
+    const result = await this.exportActiveCanvas();
+    if (!result) return;
+    const label = result.outputKind === "file" ? "Self-contained canvas HTML exported" : "Canvas package exported";
+    new Notice(`${label}: ${result.outputPath}`, 6000);
+  }
+
+  async publishCurrentCanvasToNoted(): Promise<void> {
     if (this.disposed) return;
+    const repoPath = this.settings.publishRepoPath.trim();
+    if (!repoPath) {
+      new Notice("Укажи папку сайта в настройках плагина.", 7000);
+      return;
+    }
+    if (this.settings.exportFormat === "single-html") {
+      new Notice("Для публикации нужен экспорт папкой, а не одним файлом.", 7000);
+      return;
+    }
+    if (this.publishInProgress) {
+      new Notice("Публикация уже идёт.", 4000);
+      return;
+    }
+    this.publishInProgress = true;
+    let progress: Notice | null = null;
+    try {
+      const result = await this.exportActiveCanvas();
+      if (!result) return;
+      progress = new Notice("Публикую на сайт…", 0);
+      const report = await runNotedPublish(repoPath, this.resolveAbsoluteOutputPath(result.outputPath));
+      progress.hide();
+      progress = null;
+      this.showPublishReport(report);
+    } catch (error) {
+      console.error("[canvas-html-exporter] Publish failed", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      new Notice(`Публикация не удалась: ${message}`, 12000);
+    } finally {
+      progress?.hide();
+      this.publishInProgress = false;
+    }
+  }
+
+  private resolveAbsoluteOutputPath(outputPath: string): string {
+    if (isAbsoluteFilesystemPath(outputPath)) return outputPath;
+    const adapter = this.app.vault.adapter as { getBasePath?: () => string };
+    const basePath = typeof adapter.getBasePath === "function" ? adapter.getBasePath() : "";
+    if (!basePath) throw new Error("Не удалось определить путь к хранилищу Obsidian.");
+    const { path } = requireDesktopNodeApis();
+    return path.join(basePath, outputPath);
+  }
+
+  private showPublishReport(report: NotedPublishReport): void {
+    const entry = report.published[0];
+    const fragment = createFragment();
+    const title = entry ? `«${entry.title}»` : "Запись";
+    let text: string;
+    if (report.pushed) text = `Опубликовано: ${title}. Сайт обновится примерно через минуту.`;
+    else if (report.committed) text = `${title}: коммит создан, но отправить на GitHub не удалось. ${report.pushError}`;
+    else text = `${title} уже на сайте — изменений нет.`;
+    if (entry?.isNew) text += " Новая запись скрыта — открой к ней доступ в админке.";
+    fragment.appendText(text);
+    if (report.siteUrl && entry) {
+      fragment.appendText(" ");
+      fragment.createEl("a", {
+        text: entry.isNew ? "Открыть админку" : "Открыть запись",
+        href: entry.isNew ? `${report.siteUrl}/admin/` : `${report.siteUrl}/canvases/${encodeURIComponent(entry.folder)}/`,
+        attr: { target: "_blank", rel: "noopener" },
+      });
+    }
+    new Notice(fragment, 15000);
+  }
+
+  private async exportActiveCanvas(): Promise<{ outputPath: string; outputKind: "folder" | "file" } | null> {
+    if (this.disposed) return null;
     if (this.exportInProgress) {
       new Notice("A canvas export is already running.", 4000);
-      return;
+      return null;
     }
     const file = this.getActiveCanvasFile();
     if (!file) {
       new Notice("No active canvas file found.", 4000);
-      return;
+      return null;
     }
 
     this.exportInProgress = true;
@@ -89,12 +175,12 @@ export default class CanvasHtmlExporterPlugin extends Plugin {
       result.options.canvasColors = this.readCanvasPaletteColors(collectCanvasColorKeys(result.data));
       const html = await convertCanvasToHtml(result.data, result.options);
       await this.writeOutput(result.outputPath, result.outputKind, html);
-      const label = result.outputKind === "file" ? "Self-contained canvas HTML exported" : "Canvas package exported";
-      new Notice(`${label}: ${result.outputPath}`, 6000);
+      return { outputPath: result.outputPath, outputKind: result.outputKind };
     } catch (error) {
       console.error("[canvas-html-exporter] Export failed", error);
       const message = error instanceof Error ? error.message : "Unknown error";
       new Notice(`Canvas export failed: ${message}`, 7000);
+      return null;
     } finally {
       this.exportInProgress = false;
     }

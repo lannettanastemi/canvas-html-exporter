@@ -152,6 +152,24 @@ export class CanvasHtmlExporterSettingTab extends PluginSettingTab {
       },
       {
         type: "group",
+        heading: "Noted",
+        items: [
+          {
+            name: "Папка сайта Noted",
+            desc: "Папка репозитория noted, например C:\\GitHub\\noted. Нужна для команды и кнопки «Опубликовать в Noted»: экспорт → publish.js → коммит и отправка на GitHub.",
+            aliases: ["noted", "publish", "публикация"],
+            visible: !isMobile,
+            control: {
+              type: "text",
+              key: "publishRepoPath",
+              defaultValue: DEFAULT_SETTINGS.publishRepoPath,
+              placeholder: "C:\\GitHub\\noted",
+            },
+          },
+        ],
+      },
+      {
+        type: "group",
         heading: "Exported page",
         items: [
           {
